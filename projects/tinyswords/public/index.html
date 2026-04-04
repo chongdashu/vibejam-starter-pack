@@ -1,0 +1,4343 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <link rel="icon" href="data:,">
+  <title>Castle Clash Duel</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #1B1F2A;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    #game-container {
+      max-width: 100vw;
+      max-height: 100vh;
+    }
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container"></div>
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
+  <script>
+    // Disable context menu on game container
+    document.addEventListener('contextmenu', (e) => {
+      if (e.target.tagName === 'CANVAS') {
+        e.preventDefault();
+      }
+    });
+
+    // === CONSTANTS ===
+    const MAP = {
+      WORLD_WIDTH: 960,
+      WORLD_HEIGHT: 540,
+      CAMERA_WIDTH: 960,
+      CAMERA_HEIGHT: 540,
+      // Diagonal layout: Blue castle top-left, Red castle bottom-right
+      CASTLE_BLUE_X: 100,
+      CASTLE_BLUE_Y: 100,
+      CASTLE_RED_X: 860,
+      CASTLE_RED_Y: 440,
+      SPAWN_BLUE_X: 200,
+      SPAWN_BLUE_Y: 160,
+      SPAWN_RED_X: 760,
+      SPAWN_RED_Y: 380,
+      TILE_SIZE: 64,
+      // Path waypoints for diagonal movement
+      PATH_WAYPOINTS: [
+        { x: 200, y: 160 },   // Near blue spawn
+        { x: 350, y: 220 },   // First bend
+        { x: 480, y: 270 },   // Center
+        { x: 610, y: 320 },   // Second bend
+        { x: 760, y: 380 }    // Near red spawn
+      ],
+      PATH_WIDTH: 100
+    };
+
+    const UNIT_STATS = {
+      warrior: {
+        maxHP: 140,
+        damage: 18,
+        moveSpeed: 110,
+        attackRange: 22,
+        attackCooldown: 750,
+        windupTime: 200,
+        aggroRadius: 140,
+        supplyCost: 3,
+        hurtRadius: 52
+      },
+      archer: {
+        maxHP: 90,
+        damage: 14,
+        moveSpeed: 95,
+        attackRange: 190,
+        attackCooldown: 1050,
+        windupTime: 250,
+        aggroRadius: 140,
+        supplyCost: 4,
+        hurtRadius: 52,
+        minRange: 40,
+        backstepDuration: 350
+      }
+    };
+
+    const COLORS = {
+      GRASS: 0x7FAE5E,
+      DIRT: 0xC6A15B,
+      SHADOW: 0x1B1F2A,
+      UI_DARK: 0x2A2F3A,
+      UI_LIGHT: 0x3A4252,
+      BLUE_PRIMARY: 0x2B6DE8,
+      BLUE_ACCENT: 0x7EC8FF,
+      RED_PRIMARY: 0xE23B3B,
+      RED_ACCENT: 0xFF8A7A,
+      HIGHLIGHT: 0xF6E27F,
+      DAMAGE_FLASH: 0xFFFFFF
+    };
+
+    // === LEVEL CONFIGURATION ===
+    const LEVELS = {
+      1: {
+        name: 'The Meadow',
+        description: 'A gentle introduction',
+        enemyCastleHP: 400,
+        playerCastleHP: 1500,
+        startingSupply: 12,
+        maxDefenders: 5,
+        allowArchers: false,
+        aiSpawnInterval: { start: 6000, min: 4500 },
+        aiScaleTime: 300,
+        mapPosition: { x: 150, y: 300 },
+        unlocked: true,
+        // Map: Open meadow with gentle diagonal path
+        map: {
+          castleBlue: { x: 100, y: 100 },
+          castleRed: { x: 860, y: 440 },
+          spawnBlue: { x: 200, y: 160 },
+          spawnRed: { x: 760, y: 380 },
+          pathWaypoints: [
+            { x: 200, y: 160 },
+            { x: 350, y: 220 },
+            { x: 480, y: 270 },
+            { x: 610, y: 320 },
+            { x: 760, y: 380 }
+          ],
+          grassColor: 0x7FAE5E,  // Bright meadow green
+          trees: [
+            { x: 750, y: 60, type: 1 }, { x: 850, y: 90, type: 2 },
+            { x: 820, y: 160, type: 3 }, { x: 900, y: 50, type: 4 },
+            { x: 60, y: 380, type: 2 }, { x: 140, y: 450, type: 1 },
+            { x: 50, y: 480, type: 3 }, { x: 200, y: 500, type: 4 },
+            { x: 400, y: 80, type: 1 }, { x: 550, y: 100, type: 2 }
+          ],
+          rocks: [
+            { x: 680, y: 120, type: 1 }, { x: 280, y: 420, type: 2 },
+            { x: 800, y: 200, type: 3 }, { x: 160, y: 350, type: 4 }
+          ],
+          bushes: [
+            { x: 720, y: 140, type: 1 }, { x: 240, y: 390, type: 2 },
+            { x: 600, y: 80, type: 1 }, { x: 350, y: 500, type: 2 },
+            { x: 880, y: 130, type: 1 }, { x: 80, y: 420, type: 2 }
+          ]
+        }
+      },
+      2: {
+        name: 'Forest Edge',
+        description: 'Archers join the fray',
+        enemyCastleHP: 600,
+        playerCastleHP: 1400,
+        startingSupply: 10,
+        maxDefenders: 6,
+        allowArchers: true,
+        aiArcherChance: 0.2,
+        aiSpawnInterval: { start: 5000, min: 3500 },
+        aiScaleTime: 240,
+        mapPosition: { x: 480, y: 260 },
+        unlocked: false,
+        // Map: Dense forest with winding S-curve path
+        map: {
+          castleBlue: { x: 100, y: 270 },
+          castleRed: { x: 860, y: 270 },
+          spawnBlue: { x: 180, y: 270 },
+          spawnRed: { x: 780, y: 270 },
+          pathWaypoints: [
+            { x: 180, y: 270 },
+            { x: 280, y: 150 },   // Up to forest clearing
+            { x: 400, y: 120 },   // Through clearing
+            { x: 480, y: 200 },   // Center dip
+            { x: 560, y: 400 },   // Down curve
+            { x: 680, y: 420 },   // Lower clearing
+            { x: 780, y: 270 }    // Back to center
+          ],
+          grassColor: 0x5A9A4A,  // Darker forest green
+          trees: [
+            // Dense forest on edges
+            { x: 50, y: 80, type: 1 }, { x: 120, y: 50, type: 2 },
+            { x: 40, y: 150, type: 3 }, { x: 180, y: 80, type: 4 },
+            { x: 50, y: 420, type: 1 }, { x: 130, y: 480, type: 2 },
+            { x: 40, y: 500, type: 3 }, { x: 200, y: 450, type: 4 },
+            // Right side forest
+            { x: 900, y: 80, type: 1 }, { x: 850, y: 50, type: 2 },
+            { x: 920, y: 150, type: 3 }, { x: 780, y: 80, type: 4 },
+            { x: 900, y: 420, type: 1 }, { x: 850, y: 480, type: 2 },
+            { x: 920, y: 500, type: 3 }, { x: 780, y: 450, type: 4 },
+            // Center forest patches
+            { x: 350, y: 320, type: 1 }, { x: 420, y: 380, type: 2 },
+            { x: 550, y: 80, type: 3 }, { x: 620, y: 150, type: 4 }
+          ],
+          rocks: [
+            { x: 300, y: 250, type: 1 }, { x: 650, y: 300, type: 2 },
+            { x: 480, y: 320, type: 3 }, { x: 280, y: 420, type: 4 },
+            { x: 700, y: 150, type: 1 }, { x: 250, y: 80, type: 2 }
+          ],
+          bushes: [
+            { x: 80, y: 350, type: 1 }, { x: 880, y: 350, type: 2 },
+            { x: 320, y: 50, type: 1 }, { x: 640, y: 50, type: 2 },
+            { x: 320, y: 490, type: 1 }, { x: 640, y: 490, type: 2 },
+            { x: 150, y: 180, type: 1 }, { x: 810, y: 380, type: 2 }
+          ]
+        }
+      },
+      3: {
+        name: 'Castle Siege',
+        description: 'The final battle',
+        enemyCastleHP: 900,
+        playerCastleHP: 1200,
+        startingSupply: 8,
+        maxDefenders: 8,
+        allowArchers: true,
+        aiArcherChance: 0.3,
+        aiSpawnInterval: { start: 4000, min: 2500 },
+        aiScaleTime: 240,
+        mapPosition: { x: 810, y: 280 },
+        unlocked: false,
+        // Map: Rocky battlefield with strategic chokepoints
+        map: {
+          castleBlue: { x: 100, y: 440 },
+          castleRed: { x: 860, y: 100 },
+          spawnBlue: { x: 180, y: 380 },
+          spawnRed: { x: 780, y: 160 },
+          pathWaypoints: [
+            { x: 180, y: 380 },
+            { x: 250, y: 300 },   // First choke
+            { x: 350, y: 350 },   // Wide area
+            { x: 480, y: 270 },   // Center battleground
+            { x: 610, y: 190 },   // Second choke
+            { x: 700, y: 240 },   // Approach
+            { x: 780, y: 160 }
+          ],
+          grassColor: 0x6B8E5A,  // Muted battle-worn green
+          trees: [
+            // Sparse, war-torn landscape
+            { x: 50, y: 80, type: 1 }, { x: 40, y: 200, type: 3 },
+            { x: 920, y: 350, type: 2 }, { x: 900, y: 480, type: 4 },
+            { x: 600, y: 450, type: 1 }, { x: 350, y: 80, type: 2 }
+          ],
+          rocks: [
+            // Strategic rock formations creating chokepoints
+            { x: 200, y: 200, type: 1 }, { x: 220, y: 250, type: 2 },
+            { x: 180, y: 280, type: 3 },  // Left choke rocks
+            { x: 760, y: 280, type: 4 }, { x: 740, y: 330, type: 1 },
+            { x: 780, y: 350, type: 2 },  // Right choke rocks
+            { x: 400, y: 150, type: 3 }, { x: 560, y: 380, type: 4 },
+            { x: 300, y: 450, type: 1 }, { x: 650, y: 100, type: 2 },
+            // Boulder clusters for cover
+            { x: 500, y: 180, type: 3 }, { x: 460, y: 360, type: 4 },
+            { x: 100, y: 280, type: 1 }, { x: 860, y: 260, type: 2 }
+          ],
+          bushes: [
+            { x: 50, y: 350, type: 1 }, { x: 910, y: 200, type: 2 },
+            { x: 280, y: 500, type: 1 }, { x: 680, y: 50, type: 2 },
+            { x: 420, y: 500, type: 1 }, { x: 540, y: 50, type: 2 }
+          ]
+        }
+      }
+    };
+
+    // Level progress persistence
+    const SAVE_KEY = 'castle-clash-duel_progress';
+    function loadProgress() {
+      try {
+        const saved = localStorage.getItem(SAVE_KEY);
+        if (saved) {
+          const data = JSON.parse(saved);
+          Object.keys(data.unlocked || {}).forEach(lvl => {
+            if (LEVELS[lvl]) LEVELS[lvl].unlocked = data.unlocked[lvl];
+          });
+        }
+      } catch (e) { console.warn('Failed to load progress:', e); }
+    }
+    function saveProgress() {
+      try {
+        const unlocked = {};
+        Object.keys(LEVELS).forEach(lvl => { unlocked[lvl] = LEVELS[lvl].unlocked; });
+        localStorage.setItem(SAVE_KEY, JSON.stringify({ unlocked }));
+      } catch (e) { console.warn('Failed to save progress:', e); }
+    }
+    loadProgress();
+
+    function shouldShowLevelIntro(level) {
+      return level === 1;
+    }
+    function startLevelWithOptionalIntro(scene, level) {
+      if (shouldShowLevelIntro(level)) {
+        scene.scene.start('LevelIntroScene', { level });
+        return;
+      }
+      scene.scene.start('GameScene', { level });
+    }
+
+    const ASSET_BASE = 'assets/tinyswords/';
+    const RIBBON_FRAME = { width: 320, height: 64, row: 0 };
+    const BIG_BAR_BASE_SPEC = {
+      left: { x: 40, w: 24 },
+      center: { x: 128, w: 64 },
+      right: { x: 256, w: 24 },
+      top: 9,
+      height: 51
+    };
+
+    // SmallRibbons.png rows are laid out as 3 separated horizontal slices (left / center / right)
+    // with transparent gaps between slices. Scaling the full row stretches the gaps, so we
+    // stitch a 3-slice ribbon texture at the required size.
+    const SMALL_RIBBON_SLICE = {
+      frameW: 320,
+      frameH: 64,
+      left: { x: 2, w: 62 },
+      center: { x: 128, w: 64 },
+      right: { x: 256, w: 62 }
+    };
+
+    function getOrCreateSmallRibbonTexture(scene, width, height, row = 0) {
+      const w = Math.max(1, Math.round(width));
+      const h = Math.max(1, Math.round(height));
+      const texKey = `ribbon_small_${row}_${w}x${h}`;
+      if (scene.textures.exists(texKey)) return texKey;
+
+      const texture = scene.textures.get('ribbons-small');
+      const source = texture.getSourceImage();
+
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+
+      const scaleY = h / SMALL_RIBBON_SLICE.frameH;
+      let leftW = Math.max(1, Math.round(SMALL_RIBBON_SLICE.left.w * scaleY));
+      let rightW = Math.max(1, Math.round(SMALL_RIBBON_SLICE.right.w * scaleY));
+      let centerW = w - leftW - rightW;
+
+      if (centerW < 1) {
+        const available = Math.max(1, w - 1);
+        const totalCaps = leftW + rightW;
+        const capScale = totalCaps > 0 ? (available / totalCaps) : 1;
+        leftW = Math.max(1, Math.floor(leftW * capScale));
+        rightW = Math.max(1, available - leftW);
+        centerW = 1;
+      }
+
+      const sy = row * SMALL_RIBBON_SLICE.frameH;
+      const seam = 1;
+
+      ctx.drawImage(
+        source,
+        SMALL_RIBBON_SLICE.left.x,
+        sy,
+        SMALL_RIBBON_SLICE.left.w,
+        SMALL_RIBBON_SLICE.frameH,
+        0,
+        0,
+        Math.min(w, leftW + seam),
+        h
+      );
+
+      ctx.drawImage(
+        source,
+        SMALL_RIBBON_SLICE.center.x,
+        sy,
+        SMALL_RIBBON_SLICE.center.w,
+        SMALL_RIBBON_SLICE.frameH,
+        Math.max(0, leftW - seam),
+        0,
+        Math.min(w, centerW + seam * 2),
+        h
+      );
+
+      ctx.drawImage(
+        source,
+        SMALL_RIBBON_SLICE.right.x,
+        sy,
+        SMALL_RIBBON_SLICE.right.w,
+        SMALL_RIBBON_SLICE.frameH,
+        Math.max(0, leftW + centerW - seam),
+        0,
+        Math.min(w, rightW + seam),
+        h
+      );
+
+      scene.textures.addCanvas(texKey, canvas);
+      return texKey;
+    }
+
+    function getOrCreateBigBarBaseTexture(scene, width) {
+      const w = Math.max(1, Math.round(width));
+      const texKey = `bar_base_stitched_${w}`;
+      if (scene.textures.exists(texKey)) return texKey;
+
+      const spec = BIG_BAR_BASE_SPEC;
+      const totalBaseWidth = spec.left.w + spec.center.w + spec.right.w;
+      const scale = w / totalBaseWidth;
+      const leftW = Math.max(1, Math.round(spec.left.w * scale));
+      const rightW = Math.max(1, Math.round(spec.right.w * scale));
+      let centerW = Math.max(1, w - leftW - rightW);
+
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = spec.height;
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+      const source = scene.textures.get('bar-base').getSourceImage();
+
+      ctx.drawImage(source,
+        spec.left.x, spec.top, spec.left.w, spec.height,
+        0, 0, leftW, spec.height
+      );
+      ctx.drawImage(source,
+        spec.center.x, spec.top, spec.center.w, spec.height,
+        leftW, 0, centerW, spec.height
+      );
+      ctx.drawImage(source,
+        spec.right.x, spec.top, spec.right.w, spec.height,
+        leftW + centerW, 0, rightW, spec.height
+      );
+
+      scene.textures.addCanvas(texKey, canvas);
+      return texKey;
+    }
+
+    // === 9-SLICE BUTTON HELPER ===
+    // The BigBlueButton assets are 320x320 spritesheets with 9 pieces in a 3x3 grid
+    // Each cell is 96x96 with 16px gaps between cells
+    const NINE_SLICE = {
+      tileSize: 96,
+      gap: 16,
+      // Source positions for each piece (x, y) in the spritesheet
+      pieces: {
+        topLeft:      { x: 0,   y: 0 },
+        topCenter:    { x: 112, y: 0 },
+        topRight:     { x: 224, y: 0 },
+        middleLeft:   { x: 0,   y: 112 },
+        middleCenter: { x: 112, y: 112 },
+        middleRight:  { x: 224, y: 112 },
+        bottomLeft:   { x: 0,   y: 224 },
+        bottomCenter: { x: 112, y: 224 },
+        bottomRight:  { x: 224, y: 224 }
+      },
+      // How much of each corner to preserve (don't stretch)
+      // In output pixels (destination). Tuned to match Tiny Swords' BigBlueButton art.
+      cornerSize: 48,
+      overlap: 26      // Overlap pieces to hide internal tile padding
+    };
+
+    function getOrCreateNineSliceTexture(scene, textureKey, width, height) {
+      const texKey = `nineslice_${textureKey}_${width}x${height}`;
+      if (scene.textures.exists(texKey)) return texKey;
+
+      const ts = NINE_SLICE.tileSize;
+      const cs = NINE_SLICE.cornerSize;
+      const ov = NINE_SLICE.overlap;
+      const p = NINE_SLICE.pieces;
+
+      const texture = scene.textures.get(textureKey);
+      const source = texture.getSourceImage();
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+
+      const ecs = cs - ov;
+      const centerW = width - ecs * 2;
+      const centerH = height - ecs * 2;
+
+      ctx.drawImage(source, p.middleCenter.x, p.middleCenter.y, ts, ts, ecs - ov, ecs - ov, centerW + ov * 2, centerH + ov * 2);
+      ctx.drawImage(source, p.middleLeft.x, p.middleLeft.y, ts, ts, 0, ecs - ov, cs, centerH + ov * 2);
+      ctx.drawImage(source, p.middleRight.x, p.middleRight.y, ts, ts, width - cs, ecs - ov, cs, centerH + ov * 2);
+
+      ctx.drawImage(source, p.topCenter.x, p.topCenter.y, ts, ts, ecs - ov, 0, centerW + ov * 2, cs);
+      ctx.drawImage(source, p.bottomCenter.x, p.bottomCenter.y, ts, ts, ecs - ov, height - cs, centerW + ov * 2, cs);
+
+      ctx.drawImage(source, p.topLeft.x, p.topLeft.y, ts, ts, 0, 0, cs, cs);
+      ctx.drawImage(source, p.topRight.x, p.topRight.y, ts, ts, width - cs, 0, cs, cs);
+      ctx.drawImage(source, p.bottomLeft.x, p.bottomLeft.y, ts, ts, 0, height - cs, cs, cs);
+      ctx.drawImage(source, p.bottomRight.x, p.bottomRight.y, ts, ts, width - cs, height - cs, cs, cs);
+
+      scene.textures.addCanvas(texKey, canvas);
+      return texKey;
+    }
+
+    // === TRIMMED 9-SLICE (for Big*Button assets with heavy transparent padding) ===
+    // These sprite sheets include large transparent margins inside each 96x96 tile.
+    // Using a trimmed crop avoids visible seams/gaps in the composed button.
+    const BIG_BUTTON_TRIM_3X3 = {
+      tileSize: 96,
+      gap: 16,
+      cols: [
+        { x: 19, w: 45 }, // left
+        { x: 16, w: 64 }, // center
+        { x: 32, w: 45 }  // right
+      ],
+      rows: [
+        { y: 17, h: 47 }, // top
+        { y: 16, h: 64 }, // middle
+        { y: 32, h: 47 }  // bottom
+      ]
+    };
+
+    // Papers are 320x320 images with a 3x3 grid. Each cell is 106x106, with the art
+    // centered and lots of transparent padding. Trim to the effective content so
+    // the side edges don't show as thick "bars" inside panels.
+    const PAPER_REGULAR_TRIM_3X3 = {
+      tileSize: 106,
+      gap: 0,
+      cols: [
+        // Original had w:52 which included interior fill causing "bars"
+        // Reduced to w:38 to exclude most fill while keeping border visible
+        { x: 10, w: 38 }, // left - border with minimal fill
+        { x: 24, w: 58 }, // center - main fill area
+        { x: 58, w: 38 }  // right - border with minimal fill
+      ],
+      rows: [
+        { y: 18, h: 48 }, // top
+        { y: 24, h: 58 }, // middle
+        { y: 40, h: 48 }  // bottom
+      ]
+    };
+
+    const PAPER_SPECIAL_TRIM_3X3 = {
+      tileSize: 106,
+      gap: 0,
+      cols: [
+        { x: 10, w: 54 }, // left
+        { x: 22, w: 64 }, // center
+        { x: 44, w: 54 }  // right
+      ],
+      rows: [
+        { y: 20, h: 44 }, // top
+        { y: 22, h: 64 }, // middle
+        { y: 44, h: 43 }  // bottom
+      ]
+    };
+
+    // Wood table is 448x448 with 144x144 frames and 8px spacing.
+    // Trim each row/col to the effective content bounds to avoid padded-frame artifacts.
+    const WOOD_TABLE_TRIM_3X3 = {
+      tileSize: 144,
+      gap: 8,
+      cols: [
+        { x: 44, w: 84 }, // left
+        { x: 40, w: 64 }, // center
+        { x: 16, w: 84 }  // right
+      ],
+      rows: [
+        { y: 43, h: 85 },  // top
+        { y: 40, h: 64 },  // middle
+        { y: 16, h: 103 }  // bottom
+      ]
+    };
+
+    // Health bar (BigBar_Base.png) is 320x64. Metal brackets on edges need nine-slice.
+    function getOrCreateHorizontalNineSlice(scene, textureKey, targetWidth, leftCap, rightCap) {
+      const texKey = `hslice_${textureKey}_${targetWidth}`;
+      if (scene.textures.exists(texKey)) return texKey;
+
+      const texture = scene.textures.get(textureKey);
+      const source = texture.getSourceImage();
+      const srcW = source.width;
+      const srcH = source.height;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = targetWidth;
+      canvas.height = srcH;
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+
+      const centerSrcW = srcW - leftCap - rightCap;
+      const centerDstW = targetWidth - leftCap - rightCap;
+
+      // Left cap (fixed)
+      ctx.drawImage(source, 0, 0, leftCap, srcH, 0, 0, leftCap, srcH);
+      // Center (stretched)
+      ctx.drawImage(source, leftCap, 0, centerSrcW, srcH, leftCap, 0, centerDstW, srcH);
+      // Right cap (fixed)
+      ctx.drawImage(source, srcW - rightCap, 0, rightCap, srcH, targetWidth - rightCap, 0, rightCap, srcH);
+
+      scene.textures.addCanvas(texKey, canvas);
+      return texKey;
+    }
+
+    function getOrCreateNineSliceTextureTrimmed(scene, textureKey, width, height, spec = BIG_BUTTON_TRIM_3X3) {
+      const texKey = `nineslice_trimmed_${textureKey}_${width}x${height}`;
+      if (scene.textures.exists(texKey)) return texKey;
+
+      const texture = scene.textures.get(textureKey);
+      const source = texture.getSourceImage();
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+
+      const srcTopH = spec.rows[0].h;
+      const srcMidH = spec.rows[1].h;
+      const srcBottomH = spec.rows[2].h;
+      const srcTotalH = srcTopH + srcMidH + srcBottomH;
+
+      const scaleY = height / srcTotalH;
+      const leftW = Math.max(1, Math.round(spec.cols[0].w * scaleY));
+      const rightW = Math.max(1, Math.round(spec.cols[2].w * scaleY));
+      const topH = Math.max(1, Math.round(srcTopH * scaleY));
+      const bottomH = Math.max(1, Math.round(srcBottomH * scaleY));
+
+      const centerW = Math.max(1, width - leftW - rightW);
+      const centerH = Math.max(1, height - topH - bottomH);
+
+      const x0 = 0;
+      const x1 = leftW;
+      const x2 = leftW + centerW;
+      const y0 = 0;
+      const y1 = topH;
+      const y2 = topH + centerH;
+
+      function drawPiece(row, col, dx, dy, dw, dh) {
+        const tileX = col * (spec.tileSize + spec.gap);
+        const tileY = row * (spec.tileSize + spec.gap);
+        const cropCol = spec.cols[col];
+        const cropRow = spec.rows[row];
+        const sx = tileX + cropCol.x;
+        const sy = tileY + cropRow.y;
+        ctx.drawImage(source, sx, sy, cropCol.w, cropRow.h, dx, dy, dw, dh);
+      }
+
+      // Slight overlap between pieces helps hide WebGL/canvas seam lines.
+      const seam = 1;
+
+      // Center
+      drawPiece(1, 1, x1 - seam, y1 - seam, centerW + seam * 2, centerH + seam * 2);
+
+      // Edges
+      drawPiece(0, 1, x1 - seam, y0, centerW + seam * 2, topH + seam);
+      drawPiece(2, 1, x1 - seam, y2 - seam, centerW + seam * 2, bottomH + seam);
+      drawPiece(1, 0, x0, y1 - seam, leftW + seam, centerH + seam * 2);
+      drawPiece(1, 2, x2 - seam, y1 - seam, rightW + seam, centerH + seam * 2);
+
+      // Corners (draw last on top)
+      drawPiece(0, 0, x0, y0, leftW + seam, topH + seam);
+      drawPiece(0, 2, x2 - seam, y0, rightW + seam, topH + seam);
+      drawPiece(2, 0, x0, y2 - seam, leftW + seam, bottomH + seam);
+      drawPiece(2, 2, x2 - seam, y2 - seam, rightW + seam, bottomH + seam);
+
+      scene.textures.addCanvas(texKey, canvas);
+      return texKey;
+    }
+
+    function createNineSlicePanel(scene, textureKey, x, y, panelWidth, panelHeight, options = {}) {
+      let panel;
+      if (textureKey === 'ui-paper-regular') {
+        const texKey = getOrCreateNineSliceTextureTrimmed(scene, textureKey, panelWidth, panelHeight, PAPER_REGULAR_TRIM_3X3);
+        panel = scene.add.image(x, y, texKey);
+      } else if (textureKey === 'ui-paper-special') {
+        const texKey = getOrCreateNineSliceTextureTrimmed(scene, textureKey, panelWidth, panelHeight, PAPER_SPECIAL_TRIM_3X3);
+        panel = scene.add.image(x, y, texKey);
+      } else if (textureKey === 'ui-wood-table') {
+        const texKey = getOrCreateNineSliceTextureTrimmed(scene, textureKey, panelWidth, panelHeight, WOOD_TABLE_TRIM_3X3);
+        panel = scene.add.image(x, y, texKey);
+      } else {
+        panel = buildNineSlicePanel(scene, textureKey, x, y, panelWidth, panelHeight, options);
+      }
+
+      if (panel && typeof options.depth === 'number') panel.setDepth(options.depth);
+      if (panel && typeof options.alpha === 'number') panel.setAlpha(options.alpha);
+      return panel;
+    }
+
+    function createNineSliceButton(scene, x, y, width, height, textureKey) {
+      const texKey = getOrCreateNineSliceTexture(scene, textureKey, width, height);
+      const sprite = scene.add.image(x, y, texKey);
+      sprite._nineSliceKey = texKey;
+      sprite._nineSliceBase = textureKey;
+      return sprite;
+    }
+
+    function buildNineSlicePanel(scene, textureKey, x, y, panelWidth, panelHeight, options = {}) {
+      const container = scene.add.container(x, y);
+
+      const texture = scene.textures.get(textureKey);
+      const frameData = texture.frames['0'] || texture.frames[0];
+      const frameW = frameData ? frameData.width : 106;
+      const frameH = frameData ? frameData.height : 106;
+
+      const isWood = options.variant === 'wood' || textureKey.includes('wood');
+      const isSpecial = options.variant === 'special' || textureKey.includes('special');
+
+      const cornerInset = (typeof options.cornerInset === 'number')
+        ? options.cornerInset
+        : (isWood ? frameW * 0.35 : frameW * 0.28);
+      const overlap = (typeof options.overlap === 'number')
+        ? options.overlap
+        : (isWood ? 80 : 55);
+      const bgColor = (typeof options.bgColor === 'number')
+        ? options.bgColor
+        : (isWood ? 0x8B5A2B : (isSpecial ? 0x4A5568 : 0xF5E6C8));
+      const bgAlpha = (typeof options.bgAlpha === 'number') ? options.bgAlpha : 1;
+
+      const bg = scene.add.rectangle(0, 0, panelWidth, panelHeight, bgColor, bgAlpha);
+      container.add(bg);
+
+      const left = -panelWidth / 2;
+      const right = panelWidth / 2;
+      const top = -panelHeight / 2;
+      const bottom = panelHeight / 2;
+
+      const center = scene.add.image(0, 0, textureKey, 4);
+      center.setDisplaySize(panelWidth + overlap, panelHeight + overlap);
+      container.add(center);
+
+      const topY = top + cornerInset;
+      const bottomY = bottom - cornerInset;
+      const leftX = left + cornerInset;
+      const rightX = right - cornerInset;
+
+      const topEdge = scene.add.image(0, topY, textureKey, 1);
+      topEdge.setDisplaySize(panelWidth + overlap, frameH);
+      container.add(topEdge);
+
+      const bottomEdge = scene.add.image(0, bottomY, textureKey, 7);
+      bottomEdge.setDisplaySize(panelWidth + overlap, frameH);
+      container.add(bottomEdge);
+
+      const leftEdge = scene.add.image(leftX, 0, textureKey, 3);
+      leftEdge.setDisplaySize(frameW, panelHeight + overlap);
+      container.add(leftEdge);
+
+      const rightEdge = scene.add.image(rightX, 0, textureKey, 5);
+      rightEdge.setDisplaySize(frameW, panelHeight + overlap);
+      container.add(rightEdge);
+
+      container.add(scene.add.image(leftX, topY, textureKey, 0));
+      container.add(scene.add.image(rightX, topY, textureKey, 2));
+      container.add(scene.add.image(leftX, bottomY, textureKey, 6));
+      container.add(scene.add.image(rightX, bottomY, textureKey, 8));
+
+      if (typeof options.depth === 'number') container.setDepth(options.depth);
+      if (typeof options.alpha === 'number') container.setAlpha(options.alpha);
+      return container;
+    }
+
+    // === BOOT SCENE ===
+    class BootScene extends Phaser.Scene {
+      constructor() {
+        super('BootScene');
+      }
+
+      preload() {
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+
+        // Progress bar
+        const progressBox = this.add.graphics();
+        const progressBar = this.add.graphics();
+        progressBox.fillStyle(0x2A2F3A, 0.8);
+        progressBox.fillRect(width/2 - 160, height/2 - 25, 320, 50);
+
+        const loadingText = this.add.text(width/2, height/2 - 50, 'Loading...', {
+          fontSize: '24px',
+          fill: '#F6E27F'
+        }).setOrigin(0.5);
+
+        this.load.on('progress', (value) => {
+          progressBar.clear();
+          progressBar.fillStyle(0x7EC8FF, 1);
+          progressBar.fillRect(width/2 - 150, height/2 - 15, 300 * value, 30);
+        });
+
+        this.load.on('complete', () => {
+          progressBar.destroy();
+          progressBox.destroy();
+          loadingText.destroy();
+        });
+
+        // Load terrain
+        this.load.image('tilemap-color1', ASSET_BASE + 'Terrain/Tileset/Tilemap_color1.png');
+        this.load.image('tilemap-color2', ASSET_BASE + 'Terrain/Tileset/Tilemap_color2.png');
+
+        // Load castles
+        this.load.image('castle-blue', ASSET_BASE + 'Buildings/Blue Buildings/Castle.png');
+        this.load.image('castle-red', ASSET_BASE + 'Buildings/Red Buildings/Castle.png');
+
+        // Load warrior sprites (blue)
+        this.load.spritesheet('warrior-blue-idle', ASSET_BASE + 'Units/Blue Units/Warrior/Warrior_Idle.png', {
+          frameWidth: 192, frameHeight: 192
+        });
+        this.load.spritesheet('warrior-blue-run', ASSET_BASE + 'Units/Blue Units/Warrior/Warrior_Run.png', {
+          frameWidth: 192, frameHeight: 192
+        });
+        this.load.spritesheet('warrior-blue-attack', ASSET_BASE + 'Units/Blue Units/Warrior/Warrior_Attack1.png', {
+          frameWidth: 192, frameHeight: 192
+        });
+
+        // Load warrior sprites (red)
+        this.load.spritesheet('warrior-red-idle', ASSET_BASE + 'Units/Red Units/Warrior/Warrior_Idle.png', {
+          frameWidth: 192, frameHeight: 192
+        });
+        this.load.spritesheet('warrior-red-run', ASSET_BASE + 'Units/Red Units/Warrior/Warrior_Run.png', {
+          frameWidth: 192, frameHeight: 192
+        });
+        this.load.spritesheet('warrior-red-attack', ASSET_BASE + 'Units/Red Units/Warrior/Warrior_Attack1.png', {
+          frameWidth: 192, frameHeight: 192
+        });
+
+        // Load archer sprites (blue)
+        this.load.spritesheet('archer-blue-idle', ASSET_BASE + 'Units/Blue Units/Archer/Archer_Idle.png', {
+          frameWidth: 192, frameHeight: 192
+        });
+        this.load.spritesheet('archer-blue-run', ASSET_BASE + 'Units/Blue Units/Archer/Archer_Run.png', {
+          frameWidth: 192, frameHeight: 192
+        });
+        this.load.spritesheet('archer-blue-shoot', ASSET_BASE + 'Units/Blue Units/Archer/Archer_Shoot.png', {
+          frameWidth: 192, frameHeight: 192
+        });
+
+        // Load archer sprites (red)
+        this.load.spritesheet('archer-red-idle', ASSET_BASE + 'Units/Red Units/Archer/Archer_Idle.png', {
+          frameWidth: 192, frameHeight: 192
+        });
+        this.load.spritesheet('archer-red-run', ASSET_BASE + 'Units/Red Units/Archer/Archer_Run.png', {
+          frameWidth: 192, frameHeight: 192
+        });
+        this.load.spritesheet('archer-red-shoot', ASSET_BASE + 'Units/Red Units/Archer/Archer_Shoot.png', {
+          frameWidth: 192, frameHeight: 192
+        });
+
+        // Load arrows
+        this.load.image('arrow-blue', ASSET_BASE + 'Units/Blue Units/Archer/Arrow.png');
+        this.load.image('arrow-red', ASSET_BASE + 'Units/Red Units/Archer/Arrow.png');
+
+        // Load particle effects
+        this.load.spritesheet('dust-01', ASSET_BASE + 'Particle FX/Dust_01.png', {
+          frameWidth: 64, frameHeight: 64
+        });
+        this.load.spritesheet('explosion-01', ASSET_BASE + 'Particle FX/Explosion_01.png', {
+          frameWidth: 192, frameHeight: 192
+        });
+
+        // Load UI elements
+        this.load.image('cursor-01', ASSET_BASE + 'UI Elements/UI Elements/Cursors/Cursor_01.png');
+        this.load.image('btn-blue-regular', ASSET_BASE + 'UI Elements/UI Elements/Buttons/BigBlueButton_Regular.png');
+        this.load.image('btn-blue-pressed', ASSET_BASE + 'UI Elements/UI Elements/Buttons/BigBlueButton_Pressed.png');
+        this.load.image('btn-red-regular', ASSET_BASE + 'UI Elements/UI Elements/Buttons/BigRedButton_Regular.png');
+        this.load.image('bar-base', ASSET_BASE + 'UI Elements/UI Elements/Bars/BigBar_Base.png');
+        this.load.image('bar-fill', ASSET_BASE + 'UI Elements/UI Elements/Bars/BigBar_Fill.png');
+        this.load.image('btn-small-square-blue', ASSET_BASE + 'UI Elements/UI Elements/Buttons/SmallBlueSquareButton_Regular.png');
+        this.load.image('btn-small-square-blue-pressed', ASSET_BASE + 'UI Elements/UI Elements/Buttons/SmallBlueSquareButton_Pressed.png');
+
+        // World map UI elements - load as spritesheets (3x3 nine-slice grids)
+        // Papers are 320x320, so each frame is ~107x107
+        this.load.spritesheet('ui-paper-regular', ASSET_BASE + 'UI Elements/UI Elements/Papers/RegularPaper.png', {
+          frameWidth: 106, frameHeight: 106
+        });
+        this.load.spritesheet('ui-paper-special', ASSET_BASE + 'UI Elements/UI Elements/Papers/SpecialPaper.png', {
+          frameWidth: 106, frameHeight: 106
+        });
+        // Wood table is 448x448 with 8px spacing between 144px tiles
+        this.load.spritesheet('ui-wood-table', ASSET_BASE + 'UI Elements/UI Elements/Wood Table/WoodTable.png', {
+          frameWidth: 144, frameHeight: 144, spacing: 8
+        });
+        this.load.image('banner', ASSET_BASE + 'UI Elements/UI Elements/Banners/Banner.png');
+        this.load.image('ribbons-small', ASSET_BASE + 'UI Elements/UI Elements/Ribbons/SmallRibbons.png');
+        this.load.image('swords', ASSET_BASE + 'UI Elements/UI Elements/Swords/Swords.png');
+        this.load.image('btn-small-round-blue', ASSET_BASE + 'UI Elements/UI Elements/Buttons/SmallBlueRoundButton_Regular.png');
+        this.load.image('btn-small-round-blue-pressed', ASSET_BASE + 'UI Elements/UI Elements/Buttons/SmallBlueRoundButton_Pressed.png');
+        this.load.image('ui-icon-01', ASSET_BASE + 'UI Elements/UI Elements/Icons/Icon_01.png');
+        this.load.image('ui-icon-10', ASSET_BASE + 'UI Elements/UI Elements/Icons/Icon_10.png');
+
+        // Human avatars (portraits)
+        this.load.image('avatar-knight-blue', ASSET_BASE + 'UI Elements/UI Elements/Human Avatars/Avatars_03.png');
+
+        // Load decorations - Trees
+        this.load.spritesheet('tree-1', ASSET_BASE + 'Terrain/Resources/Wood/Trees/Tree1.png', {
+          frameWidth: 192, frameHeight: 256
+        });
+        this.load.spritesheet('tree-2', ASSET_BASE + 'Terrain/Resources/Wood/Trees/Tree2.png', {
+          frameWidth: 192, frameHeight: 256
+        });
+        this.load.spritesheet('tree-3', ASSET_BASE + 'Terrain/Resources/Wood/Trees/Tree3.png', {
+          frameWidth: 192, frameHeight: 192
+        });
+        this.load.spritesheet('tree-4', ASSET_BASE + 'Terrain/Resources/Wood/Trees/Tree4.png', {
+          frameWidth: 192, frameHeight: 192
+        });
+
+        // Load decorations - Rocks
+        this.load.image('rock-1', ASSET_BASE + 'Terrain/Decorations/Rocks/Rock1.png');
+        this.load.image('rock-2', ASSET_BASE + 'Terrain/Decorations/Rocks/Rock2.png');
+        this.load.image('rock-3', ASSET_BASE + 'Terrain/Decorations/Rocks/Rock3.png');
+        this.load.image('rock-4', ASSET_BASE + 'Terrain/Decorations/Rocks/Rock4.png');
+
+        // Load decorations - Bushes
+        this.load.spritesheet('bush-1', ASSET_BASE + 'Terrain/Decorations/Bushes/Bushe1.png', {
+          frameWidth: 128, frameHeight: 128
+        });
+        this.load.spritesheet('bush-2', ASSET_BASE + 'Terrain/Decorations/Bushes/Bushe2.png', {
+          frameWidth: 128, frameHeight: 128
+        });
+      }
+
+      create() {
+        // Create animations
+        this.createAnimations();
+        this.scene.start('MenuScene');
+      }
+
+      createAnimations() {
+        // Warrior animations (both teams)
+        ['blue', 'red'].forEach(team => {
+          this.anims.create({
+            key: `warrior-${team}-idle`,
+            frames: this.anims.generateFrameNumbers(`warrior-${team}-idle`, { start: 0, end: 5 }),
+            frameRate: 8,
+            repeat: -1
+          });
+
+          this.anims.create({
+            key: `warrior-${team}-run`,
+            frames: this.anims.generateFrameNumbers(`warrior-${team}-run`, { start: 0, end: 5 }),
+            frameRate: 10,
+            repeat: -1
+          });
+
+          this.anims.create({
+            key: `warrior-${team}-attack`,
+            frames: this.anims.generateFrameNumbers(`warrior-${team}-attack`, { start: 0, end: 3 }),
+            frameRate: 12,
+            repeat: 0
+          });
+        });
+
+        // Archer animations (both teams)
+        ['blue', 'red'].forEach(team => {
+          this.anims.create({
+            key: `archer-${team}-idle`,
+            frames: this.anims.generateFrameNumbers(`archer-${team}-idle`, { start: 0, end: 5 }),
+            frameRate: 8,
+            repeat: -1
+          });
+
+          this.anims.create({
+            key: `archer-${team}-run`,
+            frames: this.anims.generateFrameNumbers(`archer-${team}-run`, { start: 0, end: 3 }),
+            frameRate: 10,
+            repeat: -1
+          });
+
+          this.anims.create({
+            key: `archer-${team}-shoot`,
+            frames: this.anims.generateFrameNumbers(`archer-${team}-shoot`, { start: 0, end: 7 }),
+            frameRate: 12,
+            repeat: 0
+          });
+        });
+
+        // Dust animation
+        this.anims.create({
+          key: 'dust-puff',
+          frames: this.anims.generateFrameNumbers('dust-01', { start: 0, end: 7 }),
+          frameRate: 16,
+          hideOnComplete: true
+        });
+
+        // Explosion animation
+        this.anims.create({
+          key: 'explosion',
+          frames: this.anims.generateFrameNumbers('explosion-01', { start: 0, end: 7 }),
+          frameRate: 16,
+          hideOnComplete: true
+        });
+
+        // Tree animations (swaying) - simple loop
+        for (let i = 1; i <= 4; i++) {
+          this.anims.create({
+            key: `tree-${i}-sway`,
+            frames: this.anims.generateFrameNumbers(`tree-${i}`, { start: 0, end: 7 }),
+            frameRate: 5,
+            repeat: -1
+          });
+        }
+
+        // Bush animations - simple loop
+        for (let i = 1; i <= 2; i++) {
+          this.anims.create({
+            key: `bush-${i}-sway`,
+            frames: this.anims.generateFrameNumbers(`bush-${i}`, { start: 0, end: 7 }),
+            frameRate: 5,
+            repeat: -1
+          });
+        }
+      }
+    }
+
+    // === UI TEST SCENE ===
+    class UITestScene extends Phaser.Scene {
+      constructor() {
+        super('UITestScene');
+      }
+
+      create() {
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+
+        // Dark background
+        this.add.rectangle(width/2, height/2, width, height, 0x333333);
+
+        // Title
+        this.add.text(width/2, 30, 'UI ELEMENT TEST - Press 1-4 to switch', {
+          fontSize: '20px',
+          fill: '#FFFFFF'
+        }).setOrigin(0.5);
+
+        // Current test index
+        this.currentTest = 0;
+        this.testContainer = this.add.container(0, 0);
+
+        // Show first test
+        this.showTest(0);
+
+        // Keyboard controls
+        this.input.keyboard.on('keydown-ONE', () => this.showTest(0));
+        this.input.keyboard.on('keydown-TWO', () => this.showTest(1));
+        this.input.keyboard.on('keydown-THREE', () => this.showTest(2));
+        this.input.keyboard.on('keydown-FOUR', () => this.showTest(3));
+        this.input.keyboard.on('keydown-ESC', () => this.scene.start('MenuScene'));
+      }
+
+      showTest(index) {
+        this.currentTest = index;
+        this.testContainer.removeAll(true);
+
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+
+        // Test label
+        const labels = ['1: Raw Spritesheet Frames', '2: Paper Regular Panel', '3: Paper Special Panel', '4: Wood Table Panel'];
+        const label = this.add.text(width/2, 70, labels[index], {
+          fontSize: '16px',
+          fill: '#F6E27F'
+        }).setOrigin(0.5);
+        this.testContainer.add(label);
+
+        switch(index) {
+          case 0:
+            this.showRawFrames();
+            break;
+          case 1:
+            this.showNineSlicePanel('ui-paper-regular', 400, 200);
+            break;
+          case 2:
+            this.showNineSlicePanel('ui-paper-special', 400, 200);
+            break;
+          case 3:
+            this.showNineSlicePanel('ui-wood-table', 400, 200);
+            break;
+        }
+      }
+
+      showRawFrames() {
+        const width = this.cameras.main.width;
+
+        // Show all 9 frames of ui-paper-regular
+        const label1 = this.add.text(width/4, 110, 'ui-paper-regular frames:', {
+          fontSize: '14px', fill: '#FFFFFF'
+        });
+        this.testContainer.add(label1);
+
+        for (let i = 0; i < 9; i++) {
+          const row = Math.floor(i / 3);
+          const col = i % 3;
+          const x = width/4 - 80 + col * 90;
+          const y = 180 + row * 90;
+
+          const frame = this.add.image(x, y, 'ui-paper-regular', i);
+          this.testContainer.add(frame);
+
+          const num = this.add.text(x, y + 50, `${i}`, {
+            fontSize: '12px', fill: '#888888'
+          }).setOrigin(0.5);
+          this.testContainer.add(num);
+        }
+
+        // Show all 9 frames of ui-wood-table
+        const label2 = this.add.text(width * 3/4 - 100, 110, 'ui-wood-table frames:', {
+          fontSize: '14px', fill: '#FFFFFF'
+        });
+        this.testContainer.add(label2);
+
+        for (let i = 0; i < 9; i++) {
+          const row = Math.floor(i / 3);
+          const col = i % 3;
+          const x = width * 3/4 - 100 + col * 100;
+          const y = 180 + row * 100;
+
+          const frame = this.add.image(x, y, 'ui-wood-table', i);
+          frame.setScale(0.7);
+          this.testContainer.add(frame);
+
+          const num = this.add.text(x, y + 60, `${i}`, {
+            fontSize: '12px', fill: '#888888'
+          }).setOrigin(0.5);
+          this.testContainer.add(num);
+        }
+      }
+
+      showNineSlicePanel(textureKey, panelWidth, panelHeight) {
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+        const centerX = width / 2;
+        const centerY = height / 2 + 50;
+
+        const panel = createNineSlicePanel(this, textureKey, centerX, centerY, panelWidth, panelHeight);
+        this.testContainer.add(panel);
+
+        // Add test text on top
+        const isDark = textureKey.includes('special') || textureKey.includes('wood');
+        const testText = this.add.text(centerX, centerY, 'Panel Content Here', {
+          fontSize: '20px',
+          fill: isDark ? '#F6E27F' : '#333333'
+        }).setOrigin(0.5);
+        this.testContainer.add(testText);
+      }
+    }
+
+    // === MENU SCENE ===
+    class MenuScene extends Phaser.Scene {
+      constructor() {
+        super('MenuScene');
+      }
+
+      create() {
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+
+        // Background
+        this.add.rectangle(width/2, height/2, width, height, COLORS.GRASS);
+
+        // Vignette overlay
+        const vignette = this.add.graphics();
+        vignette.fillStyle(0x000000, 0.3);
+        vignette.fillRect(0, 0, width, height);
+
+        // Ambient decorations
+        const swords = this.add.image(width / 2, 120, 'swords')
+          .setScale(0.22)
+          .setAlpha(0.25)
+          .setDepth(1);
+        const ribbonLeft = this.add.image(140, 150, 'ribbons-small')
+          .setScale(0.25)
+          .setAlpha(0.28)
+          .setDepth(1);
+        const ribbonRight = this.add.image(width - 140, 170, 'ribbons-small')
+          .setScale(0.25)
+          .setAlpha(0.22)
+          .setDepth(1)
+          .setFlipX(true);
+
+        this.tweens.add({
+          targets: [swords],
+          angle: { from: -2, to: 2 },
+          duration: 4200,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut'
+        });
+        this.tweens.add({
+          targets: [ribbonLeft, ribbonRight],
+          y: '+=6',
+          duration: 2600,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut'
+        });
+
+        // Title area - nine-slice panel
+        const titlePanel = createNineSlicePanel(this, 'ui-paper-special', width/2, 110, 660, 170, { depth: 1 });
+
+        // Title
+        const titleText = this.add.text(width/2, 90, 'CASTLE CLASH', {
+          fontSize: '42px',
+          fill: '#F6E27F',
+          fontStyle: 'bold',
+          stroke: '#1B1F2A',
+          strokeThickness: 3
+        }).setOrigin(0.5).setDepth(2);
+
+        // Subtitle
+        const subtitleText = this.add.text(width/2, 135, 'Defend your castle, destroy theirs!', {
+          fontSize: '16px',
+          fill: '#E6E6E6'
+        }).setOrigin(0.5).setDepth(2);
+
+        // Start button - nine-slice button (matches in-game UI style)
+        const startBtnW = 360;
+        const startBtnH = 96;
+        const startBtnRegularKey = getOrCreateNineSliceTextureTrimmed(this, 'btn-blue-regular', startBtnW, startBtnH);
+        const startBtnPressedKey = getOrCreateNineSliceTextureTrimmed(this, 'btn-blue-pressed', startBtnW, startBtnH);
+
+        const startBtnBg = this.add.image(width/2, 265, startBtnRegularKey)
+          .setInteractive({ useHandCursor: true })
+          .setDepth(2);
+
+        const startBtnText = this.add.text(width/2, 265, 'START', {
+          fontSize: '28px',
+          fill: '#FFFFFF',
+          fontStyle: 'bold',
+          stroke: '#1B1F2A',
+          strokeThickness: 4
+        }).setOrigin(0.5).setDepth(3);
+
+        const startBtnGlow = this.add.circle(width/2, 265, 120, COLORS.BLUE_ACCENT, 0.18)
+          .setDepth(1);
+
+        startBtnBg.on('pointerover', () => startBtnBg.setTint(0xE6F6FF));
+        startBtnBg.on('pointerout', (pointer) => {
+          startBtnBg.clearTint();
+          if (!pointer.isDown) {
+            startBtnBg.setTexture(startBtnRegularKey);
+            startBtnBg.setScale(1);
+          }
+        });
+        startBtnBg.on('pointerdown', () => {
+          startBtnBg.setTexture(startBtnPressedKey);
+          startBtnBg.setScale(0.98);
+        });
+        startBtnBg.on('pointerup', () => {
+          startBtnBg.setTexture(startBtnRegularKey);
+          startBtnBg.setScale(1);
+          this.startGame();
+        });
+        startBtnBg.on('pointerupoutside', () => {
+          startBtnBg.setTexture(startBtnRegularKey);
+          startBtnBg.setScale(1);
+        });
+
+        // Gentle motion for the hero area
+        this.tweens.add({
+          targets: [titlePanel, titleText, subtitleText],
+          y: '-=4',
+          duration: 2200,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut'
+        });
+
+        this.tweens.add({
+          targets: startBtnGlow,
+          alpha: { from: 0.12, to: 0.24 },
+          scale: { from: 0.9, to: 1.05 },
+          duration: 1600,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut'
+        });
+
+        this.tweens.add({
+          targets: [startBtnBg, startBtnText],
+          scale: { from: 1, to: 1.02 },
+          duration: 1400,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut'
+        });
+        // Controls panel - nine-slice paper
+        const controlsY = 430;
+        createNineSlicePanel(this, 'ui-paper-regular', width/2, controlsY, 820, 120, { depth: 1 });
+
+        this.add.text(width/2, controlsY - 38, 'CONTROLS', {
+          fontSize: '16px',
+          fill: '#5A3F20',
+          fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(2);
+
+        this.add.text(width/2, controlsY,
+          'Select: Click/Tap  |  Command: Right-click / Tap ground or enemy', {
+          fontSize: '13px',
+          fill: '#333333'
+        }).setOrigin(0.5).setDepth(2);
+
+        this.add.text(width/2, controlsY + 22,
+          'Spawn: W = Warrior (3)  |  A = Archer (4)  |  Pause: P / Esc', {
+          fontSize: '13px',
+          fill: '#333333'
+        }).setOrigin(0.5).setDepth(2);
+
+        // Dev link to test UI (bottom right corner)
+        const testLink = this.add.text(width - 10, height - 10, 'Dev: Test UI', {
+          fontSize: '11px',
+          fill: '#555555'
+        }).setOrigin(1, 1).setInteractive({ useHandCursor: true });
+        testLink.on('pointerover', () => testLink.setFill('#888888'));
+        testLink.on('pointerout', () => testLink.setFill('#555555'));
+        testLink.on('pointerdown', () => window.location.href = 'test.html');
+
+        // Keyboard input
+        this.input.keyboard.on('keydown-ENTER', () => this.startGame());
+        this.input.keyboard.on('keydown-SPACE', () => this.startGame());
+      }
+
+      startGame() {
+        this.cameras.main.fadeOut(220, 0, 0, 0);
+        this.cameras.main.once('camerafadeoutcomplete', () => {
+          this.scene.start('WorldMapScene');
+        });
+      }
+    }
+
+    // === WORLD MAP SCENE ===
+    class WorldMapScene extends Phaser.Scene {
+      constructor() {
+        super('WorldMapScene');
+      }
+
+      create() {
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+
+        // World map is wider than the screen - allows scrolling
+        this.mapWidth = 960;
+        this.mapHeight = 540;
+
+        // Create scrollable map container
+        this.mapContainer = this.add.container(0, 0);
+
+        // Draw the world map background
+        this.drawWorldMap();
+
+        // Draw paths between levels
+        this.drawLevelPaths();
+
+        // Create level nodes
+        this.levelNodes = {};
+        this.createLevelNodes();
+
+        // UI overlay (doesn't scroll)
+        this.createUI();
+
+        // Setup input for map scrolling
+        this.setupMapScrolling();
+
+        // Camera setup
+        this.cameras.main.setBounds(0, 0, this.mapWidth, this.mapHeight);
+        this.cameras.main.setZoom(0.85);
+        this.cameras.main.centerOn(this.mapWidth / 2, this.mapHeight / 2);
+        this.cameras.main.fadeIn(320);
+
+        // Center on first unlocked level
+        const firstUnlocked = this.getHighestUnlockedLevel();
+        const levelData = LEVELS[firstUnlocked];
+        this.playMapIntro(levelData.mapPosition);
+
+        // Select first unlocked level by default
+        this.selectedLevel = firstUnlocked;
+        this.updateLevelInfo();
+
+        // Keyboard navigation
+        this.input.keyboard.on('keydown-LEFT', () => this.navigateLevel(-1));
+        this.input.keyboard.on('keydown-RIGHT', () => this.navigateLevel(1));
+        this.input.keyboard.on('keydown-ENTER', () => this.startSelectedLevel());
+        this.input.keyboard.on('keydown-SPACE', () => this.startSelectedLevel());
+        this.input.keyboard.on('keydown-ESC', () => this.scene.start('MenuScene'));
+      }
+
+      playMapIntro(targetPos) {
+        const camera = this.cameras.main;
+        this.time.delayedCall(90, () => {
+          camera.pan(targetPos.x, targetPos.y, 900, 'Sine.easeInOut');
+          this.tweens.add({
+            targets: camera,
+            zoom: 1,
+            duration: 900,
+            ease: 'Sine.easeOut'
+          });
+        });
+      }
+
+      drawWorldMap() {
+        // Grass background with subtle variation
+        const bg = this.add.graphics();
+        bg.fillStyle(COLORS.GRASS, 1);
+        bg.fillRect(0, 0, this.mapWidth, this.mapHeight);
+        this.mapContainer.add(bg);
+
+        // Add some grass color variation patches
+        const patches = this.add.graphics();
+        for (let i = 0; i < 20; i++) {
+          const x = Phaser.Math.Between(0, this.mapWidth);
+          const y = Phaser.Math.Between(0, this.mapHeight);
+          const size = Phaser.Math.Between(60, 150);
+          patches.fillStyle(0x6A9A4E, 0.3);
+          patches.fillCircle(x, y, size);
+        }
+        for (let i = 0; i < 15; i++) {
+          const x = Phaser.Math.Between(0, this.mapWidth);
+          const y = Phaser.Math.Between(0, this.mapHeight);
+          const size = Phaser.Math.Between(40, 100);
+          patches.fillStyle(0x8FC070, 0.25);
+          patches.fillCircle(x, y, size);
+        }
+        this.mapContainer.add(patches);
+
+        // Add decorative elements (trees, rocks) around the map
+        this.addMapDecorations();
+
+        // Water/river on the edges for visual interest
+        const water = this.add.graphics();
+        water.fillStyle(0x4A90C2, 0.6);
+        // Top-right water
+        water.fillEllipse(this.mapWidth - 40, 60, 180, 120);
+        // Bottom-left water
+        water.fillEllipse(60, this.mapHeight - 50, 160, 100);
+        this.mapContainer.add(water);
+      }
+
+      addMapDecorations() {
+        // Trees scattered around (avoid level positions)
+        const treePositions = [
+          { x: 50, y: 150, type: 1 }, { x: 80, y: 80, type: 2 },
+          { x: 900, y: 400, type: 1 }, { x: 870, y: 470, type: 3 },
+          { x: 300, y: 450, type: 2 }, { x: 350, y: 490, type: 4 },
+          { x: 600, y: 80, type: 1 }, { x: 650, y: 120, type: 2 },
+          { x: 200, y: 100, type: 3 }, { x: 750, y: 450, type: 4 },
+          { x: 400, y: 380, type: 1 }, { x: 550, y: 350, type: 2 },
+        ];
+
+        treePositions.forEach((pos, idx) => {
+          const tree = this.add.sprite(pos.x, pos.y, `tree-${pos.type}`);
+          tree.setScale(0.5);
+          tree.setDepth(pos.y * 0.01);
+          this.time.delayedCall(idx * 150, () => {
+            if (tree.active) tree.anims.play(`tree-${pos.type}-sway`, true);
+          });
+          this.mapContainer.add(tree);
+        });
+
+        // Rocks
+        const rockPositions = [
+          { x: 250, y: 380, type: 1 }, { x: 700, y: 100, type: 2 },
+          { x: 100, y: 450, type: 3 }, { x: 850, y: 150, type: 4 },
+        ];
+        rockPositions.forEach(pos => {
+          const rock = this.add.image(pos.x, pos.y, `rock-${pos.type}`);
+          rock.setScale(0.7);
+          this.mapContainer.add(rock);
+        });
+      }
+
+      drawLevelPaths() {
+        const pathGraphics = this.add.graphics();
+        pathGraphics.setDepth(5);
+
+        // Draw paths between levels
+        const levelPositions = Object.values(LEVELS).map(l => l.mapPosition);
+
+        // Path style - dirt road
+        pathGraphics.lineStyle(24, 0x8B7340, 1);
+        pathGraphics.beginPath();
+        pathGraphics.moveTo(levelPositions[0].x, levelPositions[0].y);
+        for (let i = 1; i < levelPositions.length; i++) {
+          pathGraphics.lineTo(levelPositions[i].x, levelPositions[i].y);
+        }
+        pathGraphics.strokePath();
+
+        // Inner path (lighter)
+        pathGraphics.lineStyle(16, COLORS.DIRT, 1);
+        pathGraphics.beginPath();
+        pathGraphics.moveTo(levelPositions[0].x, levelPositions[0].y);
+        for (let i = 1; i < levelPositions.length; i++) {
+          pathGraphics.lineTo(levelPositions[i].x, levelPositions[i].y);
+        }
+        pathGraphics.strokePath();
+
+        this.mapContainer.add(pathGraphics);
+      }
+
+      createLevelNodes() {
+        Object.keys(LEVELS).forEach(levelNum => {
+          const level = LEVELS[levelNum];
+          const node = this.createLevelNode(parseInt(levelNum), level);
+          this.levelNodes[levelNum] = node;
+        });
+      }
+
+      createLevelNode(levelNum, levelData) {
+        const { x, y } = levelData.mapPosition;
+        const container = this.add.container(x, y);
+        container.setDepth(10);
+
+        // Node base (castle icon)
+        const baseSize = 70;
+
+        // Glow ring for unlocked levels
+        const glow = this.add.graphics();
+        if (levelData.unlocked) {
+          glow.fillStyle(COLORS.HIGHLIGHT, 0.3);
+          glow.fillCircle(0, 0, baseSize + 10);
+        }
+        container.add(glow);
+
+        // Castle platform
+        const platform = this.add.graphics();
+        platform.fillStyle(levelData.unlocked ? 0x8B7340 : 0x555555, 1);
+        platform.fillCircle(0, 0, baseSize);
+        platform.lineStyle(4, levelData.unlocked ? 0x4A3A1A : 0x333333, 1);
+        platform.strokeCircle(0, 0, baseSize);
+        container.add(platform);
+
+        // Castle sprite
+        const castle = this.add.image(0, -10, levelData.unlocked ? 'castle-blue' : 'castle-red');
+        castle.setScale(0.35);
+        if (!levelData.unlocked) {
+          castle.setTint(0x555555);
+        }
+        container.add(castle);
+
+        // Level number
+        const levelText = this.add.text(0, 35, `${levelNum}`, {
+          fontSize: '24px',
+          fill: levelData.unlocked ? '#FFFFFF' : '#888888',
+          fontStyle: 'bold',
+          stroke: '#1B1F2A',
+          strokeThickness: 3
+        }).setOrigin(0.5);
+        container.add(levelText);
+
+        // Lock icon for locked levels
+        if (!levelData.unlocked) {
+          const lock = this.add.text(0, -10, '🔒', {
+            fontSize: '32px'
+          }).setOrigin(0.5);
+          container.add(lock);
+        }
+
+        // Make interactive if unlocked
+        if (levelData.unlocked) {
+          const hitArea = this.add.circle(0, 0, baseSize, 0xffffff, 0);
+          hitArea.setInteractive({ useHandCursor: true });
+
+          hitArea.on('pointerdown', () => {
+            this.selectedLevel = levelNum;
+            this.updateLevelInfo();
+            this.highlightSelectedLevel();
+          });
+
+          hitArea.on('pointerup', () => {
+            // Double-click detection
+            if (this.lastClickLevel === levelNum && Date.now() - this.lastClickTime < 400) {
+              this.startSelectedLevel();
+            }
+            this.lastClickLevel = levelNum;
+            this.lastClickTime = Date.now();
+          });
+
+          hitArea.on('pointerover', () => {
+            this.tweens.add({
+              targets: container,
+              scale: 1.1,
+              duration: 100
+            });
+          });
+
+          hitArea.on('pointerout', () => {
+            this.tweens.add({
+              targets: container,
+              scale: this.selectedLevel === levelNum ? 1.15 : 1,
+              duration: 100
+            });
+          });
+
+          container.add(hitArea);
+        }
+
+        this.mapContainer.add(container);
+
+        // Store references
+        container.levelNum = levelNum;
+        container.glow = glow;
+        container.platform = platform;
+
+        return container;
+      }
+
+      createUI() {
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+
+        // Top banner - paper panel
+        const topPanel = createNineSlicePanel(this, 'ui-paper-regular', width / 2, 40, 420, 70, {
+          depth: 100,
+          alpha: 0.98
+        });
+        topPanel.setScrollFactor(0);
+
+        const title = this.add.text(width / 2, 40, 'SELECT YOUR BATTLE', {
+          fontSize: '22px',
+          fill: '#5A3F20',
+          fontStyle: 'bold',
+          stroke: '#1B1F2A',
+          strokeThickness: 1
+        }).setOrigin(0.5);
+        title.setScrollFactor(0);
+        title.setDepth(102);
+
+        // Back button using small round button
+        const backBtnBg = this.add.image(40, 40, 'btn-small-round-blue');
+        backBtnBg.setScrollFactor(0);
+        backBtnBg.setDepth(101);
+        backBtnBg.setScale(0.45);
+        backBtnBg.setInteractive({ useHandCursor: true });
+
+        const backBtnText = this.add.text(40, 38, '◀', {
+          fontSize: '18px',
+          fill: '#FFFFFF',
+          fontStyle: 'bold'
+        }).setOrigin(0.5);
+        backBtnText.setScrollFactor(0);
+        backBtnText.setDepth(102);
+
+        backBtnBg.on('pointerdown', () => {
+          backBtnBg.setTexture('btn-small-round-blue-pressed');
+          this.time.delayedCall(100, () => this.scene.start('MenuScene'));
+        });
+        backBtnBg.on('pointerover', () => backBtnBg.setTint(0xCCCCCC));
+        backBtnBg.on('pointerout', () => backBtnBg.clearTint());
+
+        // Floating level tooltip (minimap-style)
+        this.createLevelTooltip();
+
+        // Bottom hint bar - paper panel
+        const bottomPanel = createNineSlicePanel(this, 'ui-paper-regular', width / 2, height - 30, width - 120, 48, {
+          depth: 100,
+          alpha: 0.95
+        });
+        bottomPanel.setScrollFactor(0);
+
+        const hint = this.add.text(width / 2, height - 28, 'Click level to select  |  Press PLAY to start', {
+          fontSize: '14px',
+          fill: '#6A4B2A',
+          fontStyle: 'bold'
+        }).setOrigin(0.5);
+        hint.setScrollFactor(0);
+        hint.setDepth(101);
+      }
+
+      createLevelTooltip() {
+        const baseHeight = 170;
+        this.tooltip = {
+          width: 250,
+          panelHeight: baseHeight,
+          paddingX: 16,
+          baseHeaderHeight: 40,
+          sectionGap: 6,
+          contentGap: 6,
+          buttonArea: 70,
+          paddingBottom: 18,
+          arrowSize: 20,
+          margin: 18
+        };
+
+        this.floatingPanel = this.add.container(0, 0);
+        this.floatingPanel.setDepth(60);
+        this.floatingPanel.setAlpha(0);
+        this.mapContainer.add(this.floatingPanel);
+
+        this.tooltip.shadow = this.add.rectangle(0, 0, this.tooltip.width + 12, baseHeight + 10, 0x000000, 0.28)
+          .setOrigin(0.5);
+        this.floatingPanel.add(this.tooltip.shadow);
+
+        this.tooltip.panel = createNineSlicePanel(this, 'ui-paper-special', 0, 0, this.tooltip.width, baseHeight, {
+          alpha: 0.98
+        });
+        this.floatingPanel.add(this.tooltip.panel);
+
+        this.tooltip.pointer = this.add.graphics();
+        this.floatingPanel.add(this.tooltip.pointer);
+
+        const headerRibbonKey = getOrCreateSmallRibbonTexture(this, this.tooltip.width - 22, 36, RIBBON_FRAME.row);
+        this.tooltip.headerRibbon = this.add.image(0, 0, headerRibbonKey);
+        this.tooltip.headerRibbon.setOrigin(0.5);
+        this.floatingPanel.add(this.tooltip.headerRibbon);
+
+        this.tooltip.bodyPanel = createNineSlicePanel(this, 'ui-paper-regular', 0, 0, this.tooltip.width - 28, baseHeight - 64, {
+          alpha: 0.98
+        });
+        this.floatingPanel.add(this.tooltip.bodyPanel);
+
+        this.tooltip.titleText = this.add.text(0, 0, '', {
+          fontSize: '15px',
+          fill: '#F6E27F',
+          fontStyle: 'bold',
+          align: 'center',
+          stroke: '#1B1F2A',
+          strokeThickness: 2
+        }).setOrigin(0.5, 0.5);
+        this.floatingPanel.add(this.tooltip.titleText);
+
+        this.tooltip.descText = this.add.text(0, 0, '', {
+          fontSize: '12px',
+          fill: '#4A3A24',
+          align: 'center',
+          lineSpacing: 2
+        }).setOrigin(0.5, 0);
+        this.floatingPanel.add(this.tooltip.descText);
+
+        this.tooltip.statsText = this.add.text(0, 0, '', {
+          fontSize: '11px',
+          fill: '#6E5A3A',
+          align: 'center',
+          lineSpacing: 2
+        }).setOrigin(0.5, 0);
+        this.floatingPanel.add(this.tooltip.statsText);
+
+        this.tooltip.playBtn = this.add.image(0, 0, 'btn-small-round-blue');
+        this.tooltip.playBtn.setScale(0.68);
+        this.tooltip.playBtn.setInteractive({ useHandCursor: true });
+        this.floatingPanel.add(this.tooltip.playBtn);
+
+        this.tooltip.playText = this.add.text(0, 0, '▶', {
+          fontSize: '24px',
+          fill: '#FFFFFF',
+          fontStyle: 'bold'
+        }).setOrigin(0.5);
+        this.floatingPanel.add(this.tooltip.playText);
+
+        this.tooltip.playBtn.on('pointerdown', () => {
+          this.tooltip.playBtn.setTexture('btn-small-round-blue-pressed');
+          this.time.delayedCall(100, () => this.startSelectedLevel());
+        });
+        this.tooltip.playBtn.on('pointerover', () => this.tooltip.playBtn.setTint(0xCCCCCC));
+        this.tooltip.playBtn.on('pointerout', () => {
+          this.tooltip.playBtn.clearTint();
+          this.tooltip.playBtn.setTexture('btn-small-round-blue');
+        });
+      }
+
+      resizeLevelTooltip(panelWidth, panelHeight) {
+        if (this.tooltip.shadow) this.tooltip.shadow.destroy();
+        if (this.tooltip.panel) this.tooltip.panel.destroy();
+        if (this.tooltip.headerRibbon) this.tooltip.headerRibbon.destroy();
+        if (this.tooltip.bodyPanel) this.tooltip.bodyPanel.destroy();
+
+        this.tooltip.shadow = this.add.rectangle(0, 0, panelWidth + 12, panelHeight + 10, 0x000000, 0.28)
+          .setOrigin(0.5);
+        this.floatingPanel.addAt(this.tooltip.shadow, 0);
+
+        this.tooltip.panel = createNineSlicePanel(this, 'ui-paper-special', 0, 0, panelWidth, panelHeight, {
+          alpha: 0.98
+        });
+        this.floatingPanel.addAt(this.tooltip.panel, 1);
+
+        const headerRibbonKey = getOrCreateSmallRibbonTexture(this, panelWidth - 22, 36, RIBBON_FRAME.row);
+        this.tooltip.headerRibbon = this.add.image(0, 0, headerRibbonKey);
+        this.tooltip.headerRibbon.setOrigin(0.5);
+        this.floatingPanel.addAt(this.tooltip.headerRibbon, 3);
+
+        this.tooltip.bodyPanel = createNineSlicePanel(this, 'ui-paper-regular', 0, 0, panelWidth - 28, panelHeight - 64, {
+          alpha: 0.98
+        });
+        this.floatingPanel.addAt(this.tooltip.bodyPanel, 4);
+      }
+
+      layoutLevelTooltip() {
+        const cfg = this.tooltip;
+        const panelWidth = cfg.width;
+        const contentWidth = panelWidth - cfg.paddingX * 2;
+
+        this.tooltip.titleText.setWordWrapWidth(contentWidth, true);
+        this.tooltip.descText.setWordWrapWidth(contentWidth, true);
+        this.tooltip.statsText.setWordWrapWidth(contentWidth, true);
+
+        const titleH = this.tooltip.titleText.height;
+        const descH = this.tooltip.descText.height;
+        const statsH = this.tooltip.statsText.height;
+        const headerHeight = Math.max(cfg.baseHeaderHeight, titleH + 12);
+        const panelHeight = headerHeight + cfg.contentGap + descH + cfg.sectionGap + statsH + cfg.sectionGap + cfg.buttonArea + cfg.paddingBottom;
+
+        if (Math.abs(cfg.panelHeight - panelHeight) > 1) {
+          cfg.panelHeight = panelHeight;
+          this.resizeLevelTooltip(panelWidth, panelHeight);
+        }
+
+        const topY = -panelHeight / 2;
+        const headerY = topY + headerHeight / 2 + 4;
+        this.tooltip.headerRibbon.setPosition(0, headerY);
+        this.tooltip.headerRibbon.setDisplaySize(panelWidth - 22, headerHeight);
+        this.tooltip.titleText.setPosition(0, headerY - 1);
+
+        const contentTop = topY + headerHeight + cfg.contentGap + 6;
+        const contentBottom = panelHeight / 2 - cfg.buttonArea - cfg.paddingBottom - 16;
+        const contentHeight = Math.max(48, contentBottom - contentTop);
+        this.tooltip.bodyPanel.setPosition(0, contentTop + contentHeight / 2);
+        this.tooltip.bodyPanel.setDisplaySize(panelWidth - 28, contentHeight);
+
+        const descY = contentTop + 8;
+        this.tooltip.descText.setPosition(0, descY);
+        const statsY = descY + descH + cfg.sectionGap;
+        this.tooltip.statsText.setPosition(0, statsY);
+
+        const buttonY = panelHeight / 2 - cfg.paddingBottom - cfg.buttonArea / 2 + 10;
+        const buttonX = 0;
+        this.tooltip.playBtn.setPosition(buttonX, buttonY);
+        this.tooltip.playText.setPosition(buttonX, buttonY - 2);
+      }
+
+      positionLevelTooltip(levelPos) {
+        const cfg = this.tooltip;
+        const panelWidth = cfg.width;
+        const panelHeight = cfg.panelHeight;
+        const margin = cfg.margin;
+        const arrowSize = cfg.arrowSize;
+
+        let panelX = Phaser.Math.Clamp(levelPos.x, panelWidth / 2 + margin, this.mapWidth - panelWidth / 2 - margin);
+        const aboveY = levelPos.y - panelHeight / 2 - arrowSize - 12;
+        const belowY = levelPos.y + panelHeight / 2 + arrowSize + 12;
+
+        let panelY = aboveY;
+        let pointUp = false;
+
+        if (aboveY - panelHeight / 2 < margin) {
+          panelY = belowY;
+          pointUp = true;
+        } else if (belowY + panelHeight / 2 > this.mapHeight - margin) {
+          panelY = aboveY;
+          pointUp = false;
+        }
+
+        this.floatingPanel.setPosition(panelX, panelY);
+        this.tooltipBaseY = panelY;
+
+        const arrowX = Phaser.Math.Clamp(levelPos.x - panelX, -panelWidth / 2 + 24, panelWidth / 2 - 24);
+        const arrowOffset = 4;
+        const arrowY = pointUp ? -panelHeight / 2 - arrowOffset : panelHeight / 2 + arrowOffset;
+
+        this.tooltip.pointer.clear();
+        this.tooltip.pointer.fillStyle(0xF1DFC2, 1);
+        this.tooltip.pointer.lineStyle(3, 0x6E5A3A, 1);
+        this.tooltip.pointer.beginPath();
+        if (pointUp) {
+          this.tooltip.pointer.moveTo(arrowX - arrowSize, arrowY + 2);
+          this.tooltip.pointer.lineTo(arrowX + arrowSize, arrowY + 2);
+          this.tooltip.pointer.lineTo(arrowX, arrowY - arrowSize);
+        } else {
+          this.tooltip.pointer.moveTo(arrowX - arrowSize, arrowY - 2);
+          this.tooltip.pointer.lineTo(arrowX + arrowSize, arrowY - 2);
+          this.tooltip.pointer.lineTo(arrowX, arrowY + arrowSize);
+        }
+        this.tooltip.pointer.closePath();
+        this.tooltip.pointer.fillPath();
+        this.tooltip.pointer.strokePath();
+      }
+
+      animateLevelTooltip() {
+        if (this.tooltipTween) this.tooltipTween.stop();
+        if (this.tooltipFloatTween) this.tooltipFloatTween.stop();
+        this.floatingPanel.setAlpha(0);
+        this.floatingPanel.setScale(0.94);
+        this.tooltipTween = this.tweens.add({
+          targets: this.floatingPanel,
+          alpha: 1,
+          scale: 1,
+          duration: 240,
+          ease: 'Back.easeOut',
+          onComplete: () => {
+            this.tooltipFloatTween = this.tweens.add({
+              targets: this.floatingPanel,
+              y: this.tooltipBaseY - 4,
+              duration: 1200,
+              yoyo: true,
+              repeat: -1,
+              ease: 'Sine.easeInOut'
+            });
+          }
+        });
+      }
+
+      setupMapScrolling() {
+        // Drag to scroll
+        this.input.on('pointermove', (pointer) => {
+          if (pointer.isDown && !pointer.justDown) {
+            this.cameras.main.scrollX -= pointer.velocity.x * 0.02;
+            this.cameras.main.scrollY -= pointer.velocity.y * 0.02;
+          }
+        });
+      }
+
+      getHighestUnlockedLevel() {
+        let highest = 1;
+        Object.keys(LEVELS).forEach(lvl => {
+          if (LEVELS[lvl].unlocked && parseInt(lvl) > highest) {
+            highest = parseInt(lvl);
+          }
+        });
+        return highest;
+      }
+
+      navigateLevel(direction) {
+        const levels = Object.keys(LEVELS).map(Number).sort((a, b) => a - b);
+        const currentIdx = levels.indexOf(this.selectedLevel);
+        let newIdx = currentIdx + direction;
+
+        // Find next unlocked level in direction
+        while (newIdx >= 0 && newIdx < levels.length) {
+          if (LEVELS[levels[newIdx]].unlocked) {
+            this.selectedLevel = levels[newIdx];
+            this.updateLevelInfo();
+            this.highlightSelectedLevel();
+            this.panToLevel(this.selectedLevel);
+            return;
+          }
+          newIdx += direction;
+        }
+      }
+
+      panToLevel(levelNum) {
+        const level = LEVELS[levelNum];
+        this.cameras.main.pan(level.mapPosition.x, level.mapPosition.y, 300, 'Sine.easeInOut');
+      }
+
+      highlightSelectedLevel() {
+        // Reset all nodes
+        Object.keys(this.levelNodes).forEach(lvl => {
+          const node = this.levelNodes[lvl];
+          if (parseInt(lvl) === this.selectedLevel) {
+            this.tweens.add({
+              targets: node,
+              scale: 1.15,
+              duration: 150
+            });
+            // Pulse glow
+            if (node.glowTween) node.glowTween.stop();
+            node.glowTween = this.tweens.add({
+              targets: node.glow,
+              alpha: { from: 0.5, to: 1 },
+              duration: 500,
+              yoyo: true,
+              repeat: -1
+            });
+          } else {
+            node.scale = 1;
+            if (node.glowTween) {
+              node.glowTween.stop();
+              node.glow.alpha = 1;
+            }
+          }
+        });
+      }
+
+      updateLevelInfo() {
+        const level = LEVELS[this.selectedLevel];
+        const archersText = level.allowArchers ? 'Archers unlocked' : 'Warriors only';
+        this.tooltip.titleText.setText(`Level ${this.selectedLevel}: ${level.name}`);
+        this.tooltip.descText.setText(level.description);
+        this.tooltip.statsText.setText(`Defenders: ${level.maxDefenders}  •  ${archersText}`);
+
+        this.layoutLevelTooltip();
+        this.positionLevelTooltip(level.mapPosition);
+        this.animateLevelTooltip();
+
+        this.highlightSelectedLevel();
+      }
+
+      startSelectedLevel() {
+        if (!LEVELS[this.selectedLevel].unlocked) return;
+
+        this.cameras.main.fadeOut(300, 0, 0, 0);
+        this.cameras.main.once('camerafadeoutcomplete', () => {
+          startLevelWithOptionalIntro(this, this.selectedLevel);
+        });
+      }
+    }
+
+    // === LEVEL INTRO SCENE ===
+    class LevelIntroScene extends Phaser.Scene {
+      constructor() {
+        super('LevelIntroScene');
+      }
+
+      init(data) {
+        this.level = data.level || 1;
+      }
+
+      create() {
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+
+        // Backdrop
+        this.add.rectangle(width / 2, height / 2, width, height, 0x1B1F2A, 1);
+        this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.25);
+
+        // Dialogue panel
+        const panelW = 860;
+        const panelH = 220;
+        const panelX = width / 2;
+        const panelY = height - 130;
+
+        createNineSlicePanel(this, 'ui-paper-special', panelX, panelY, panelW, panelH);
+
+        // Portrait frame + avatar
+        const portraitX = panelX - panelW / 2 + 140;
+        const portraitY = panelY;
+        createNineSlicePanel(this, 'ui-paper-regular', portraitX, portraitY, 180, 180, { alpha: 0.95 });
+
+        this.add.image(portraitX, portraitY, 'avatar-knight-blue')
+          .setScale(0.55);
+
+        // Speaker + text
+        this.add.text(panelX - panelW / 2 + 260, panelY - panelH / 2 + 28, 'Knight', {
+          fontSize: '18px',
+          fill: '#F6E27F',
+          fontStyle: 'bold'
+        });
+
+        this.dialogText = this.add.text(panelX - panelW / 2 + 260, panelY - 64, '', {
+          fontSize: '20px',
+          fill: '#E6E6E6',
+          wordWrap: { width: panelW - 300 },
+          lineSpacing: 6
+        });
+
+        // Prompt / page indicator
+        this.pageIndicator = this.add.text(panelX + panelW / 2 - 26, panelY + panelH / 2 - 22, '', {
+          fontSize: '14px',
+          fill: '#F6E27F',
+          fontStyle: 'bold'
+        }).setOrigin(1, 1).setAlpha(0.9);
+
+        this.continueHint = this.add.text(panelX + panelW / 2 - 26, panelY + panelH / 2 - 42, 'Click / Space', {
+          fontSize: '12px',
+          fill: '#CCCCCC'
+        }).setOrigin(1, 1).setAlpha(0);
+
+        this.continueTween = this.tweens.add({
+          targets: this.continueHint,
+          alpha: { from: 0.2, to: 1 },
+          duration: 600,
+          yoyo: true,
+          repeat: -1,
+          paused: true
+        });
+
+        // Pages
+        this.pages = [
+          'Alright lads, the enemy is just up ahead.',
+          'Be careful of their defences.',
+          'We need to take down their castle.'
+        ];
+        this.pageIndex = 0;
+        this.isTyping = false;
+        this.typeEvent = null;
+
+        this.startTypingPage();
+
+        // Input
+        this.input.on('pointerdown', () => this.advance());
+        this.input.keyboard.on('keydown-SPACE', () => this.advance());
+        this.input.keyboard.on('keydown-ENTER', () => this.advance());
+        this.input.keyboard.on('keydown-ESC', () => this.skip());
+
+        this.cameras.main.fadeIn(220);
+      }
+
+      startTypingPage() {
+        const text = this.pages[this.pageIndex];
+        this.pageIndicator.setText(`${this.pageIndex + 1}/${this.pages.length}`);
+        this.continueHint.setAlpha(0);
+        this.continueTween.pause();
+
+        if (this.typeEvent) this.typeEvent.remove();
+        this.isTyping = true;
+        this.dialogText.setText('');
+
+        let i = 0;
+        this.typeEvent = this.time.addEvent({
+          delay: 22,
+          loop: true,
+          callback: () => {
+            i += 1;
+            this.dialogText.setText(text.slice(0, i));
+            if (i >= text.length) {
+              this.finishTyping();
+            }
+          }
+        });
+      }
+
+      finishTyping() {
+        if (!this.isTyping) return;
+        this.isTyping = false;
+        if (this.typeEvent) {
+          this.typeEvent.remove();
+          this.typeEvent = null;
+        }
+        this.dialogText.setText(this.pages[this.pageIndex]);
+        this.continueTween.play();
+      }
+
+      advance() {
+        if (this.isTyping) {
+          this.finishTyping();
+          return;
+        }
+
+        if (this.pageIndex < this.pages.length - 1) {
+          this.pageIndex += 1;
+          this.startTypingPage();
+          return;
+        }
+
+        this.scene.start('GameScene', { level: this.level });
+      }
+
+      skip() {
+        this.scene.start('GameScene', { level: this.level });
+      }
+    }
+
+    // === GAME SCENE ===
+    class GameScene extends Phaser.Scene {
+      constructor() {
+        super('GameScene');
+      }
+
+      init(data) {
+        // Get level configuration
+        this.currentLevel = data.level || 1;
+        this.levelConfig = LEVELS[this.currentLevel] || LEVELS[1];
+      }
+
+      create() {
+        const levelCfg = this.levelConfig;
+
+        // Initialize game state using level configuration
+        this.gameState = {
+          level: this.currentLevel,
+          levelConfig: levelCfg,
+          teams: {
+            blue: {
+              castle: null,
+              castleHP: levelCfg.playerCastleHP,
+              castleMaxHP: levelCfg.playerCastleHP,
+              units: null,
+              supply: levelCfg.startingSupply,
+              maxSupply: 20
+            },
+            red: {
+              castle: null,
+              castleHP: levelCfg.enemyCastleHP,
+              castleMaxHP: levelCfg.enemyCastleHP,
+              units: null,
+              supply: 6,
+              maxSupply: 20
+            }
+          },
+          selectedUnits: [],
+          selectionBox: null,
+          projectiles: null,
+          matchTime: 0,
+          supplyTimer: 0,
+          aiSpawnTimer: 0,
+          score: 0,
+          highScore: parseInt(localStorage.getItem('castle-clash-duel_highscore') || '0'),
+          intensityLevel: 0,
+          isPaused: false
+        };
+
+        // Setup world and camera
+        this.physics.world.setBounds(0, 0, MAP.WORLD_WIDTH, MAP.WORLD_HEIGHT);
+        this.cameras.main.setBounds(0, 0, MAP.WORLD_WIDTH, MAP.WORLD_HEIGHT);
+        this.cameras.main.centerOn(MAP.WORLD_WIDTH / 2, MAP.WORLD_HEIGHT / 2);
+
+        // Build terrain
+        this.buildTerrain();
+
+        // Create physics groups
+        this.gameState.teams.blue.units = this.physics.add.group();
+        this.gameState.teams.red.units = this.physics.add.group();
+        this.gameState.projectiles = this.physics.add.group();
+
+        // Create castles
+        this.createCastles();
+
+        // Setup input
+        this.setupInput();
+
+        // Setup collisions
+        this.setupCollisions();
+
+        // Create AI controller
+        this.aiController = new AIController(this);
+
+        // Selection graphics
+        this.selectionGraphics = this.add.graphics();
+        this.selectionGraphics.setDepth(130);
+
+        // Vignette overlay
+        this.createVignette();
+
+        // Launch UI scene
+        this.scene.launch('UIScene');
+
+        // Camera fade in
+        this.cameras.main.fadeIn(220);
+
+        // Initial UI updates
+        this.registry.events.emit('updateSupply', this.gameState.teams.blue.supply, this.gameState.teams.blue.maxSupply);
+        this.registry.events.emit('updateScore', this.gameState.score, this.gameState.highScore);
+        this.registry.events.emit('updateDefenders', 0, this.gameState.levelConfig.maxDefenders);
+      }
+
+      buildTerrain() {
+        // Get level-specific map configuration
+        const mapCfg = this.levelConfig.map;
+        const castleBlue = mapCfg.castleBlue;
+        const castleRed = mapCfg.castleRed;
+        const waypoints = mapCfg.pathWaypoints;
+        const grassColor = mapCfg.grassColor;
+        const pathWidth = MAP.PATH_WIDTH;
+
+        // Store map config for use by other methods
+        this.mapConfig = mapCfg;
+
+        // Background grass color (level-specific)
+        this.add.rectangle(MAP.WORLD_WIDTH/2, MAP.WORLD_HEIGHT/2, MAP.WORLD_WIDTH, MAP.WORLD_HEIGHT, grassColor).setDepth(0);
+
+        // Layer 1: Dark outer border (behind)
+        const outerBorder = this.add.graphics();
+        outerBorder.setDepth(1);
+        outerBorder.lineStyle(pathWidth + 14, 0x4A3A1A, 1);
+        outerBorder.beginPath();
+        outerBorder.moveTo(castleBlue.x, castleBlue.y);
+        waypoints.forEach(wp => outerBorder.lineTo(wp.x, wp.y));
+        outerBorder.lineTo(castleRed.x, castleRed.y);
+        outerBorder.strokePath();
+        // Corner circles
+        outerBorder.fillStyle(0x4A3A1A, 1);
+        outerBorder.fillCircle(castleBlue.x, castleBlue.y, (pathWidth + 14) / 2);
+        waypoints.forEach(wp => outerBorder.fillCircle(wp.x, wp.y, (pathWidth + 14) / 2));
+        outerBorder.fillCircle(castleRed.x, castleRed.y, (pathWidth + 14) / 2);
+
+        // Layer 2: Mid border
+        const midBorder = this.add.graphics();
+        midBorder.setDepth(2);
+        midBorder.lineStyle(pathWidth + 6, 0x8B7340, 1);
+        midBorder.beginPath();
+        midBorder.moveTo(castleBlue.x, castleBlue.y);
+        waypoints.forEach(wp => midBorder.lineTo(wp.x, wp.y));
+        midBorder.lineTo(castleRed.x, castleRed.y);
+        midBorder.strokePath();
+        midBorder.fillStyle(0x8B7340, 1);
+        midBorder.fillCircle(castleBlue.x, castleBlue.y, (pathWidth + 6) / 2);
+        waypoints.forEach(wp => midBorder.fillCircle(wp.x, wp.y, (pathWidth + 6) / 2));
+        midBorder.fillCircle(castleRed.x, castleRed.y, (pathWidth + 6) / 2);
+
+        // Layer 3: Main dirt path (on top)
+        const pathGraphics = this.add.graphics();
+        pathGraphics.setDepth(3);
+        pathGraphics.lineStyle(pathWidth - 8, COLORS.DIRT, 1);
+        pathGraphics.beginPath();
+        pathGraphics.moveTo(castleBlue.x, castleBlue.y);
+        waypoints.forEach(wp => pathGraphics.lineTo(wp.x, wp.y));
+        pathGraphics.lineTo(castleRed.x, castleRed.y);
+        pathGraphics.strokePath();
+        // Corner circles
+        pathGraphics.fillStyle(COLORS.DIRT, 1);
+        pathGraphics.fillCircle(castleBlue.x, castleBlue.y, (pathWidth - 8) / 2);
+        waypoints.forEach(wp => pathGraphics.fillCircle(wp.x, wp.y, (pathWidth - 8) / 2));
+        pathGraphics.fillCircle(castleRed.x, castleRed.y, (pathWidth - 8) / 2);
+
+        // Add dirt variation patches along the path
+        const patchGraphics = this.add.graphics();
+        patchGraphics.setDepth(4);
+        for (let i = 0; i < waypoints.length - 1; i++) {
+          const p1 = waypoints[i];
+          const p2 = waypoints[i + 1];
+          for (let j = 0; j < 3; j++) {
+            const t = (j + 1) / 4;
+            const x = Phaser.Math.Linear(p1.x, p2.x, t) + Phaser.Math.Between(-20, 20);
+            const y = Phaser.Math.Linear(p1.y, p2.y, t) + Phaser.Math.Between(-20, 20);
+            const size = Phaser.Math.Between(20, 40);
+            patchGraphics.fillStyle(0x8B7340, 0.2);
+            patchGraphics.fillCircle(x, y, size);
+          }
+        }
+
+        // Store path graphics for potential later use
+        this.pathGraphics = { outerBorder, midBorder, pathGraphics, patchGraphics };
+
+        // Add decorations (trees, rocks, bushes)
+        this.addDecorations();
+      }
+
+      // Check if a point is too close to the path (uses level-specific map)
+      isOnPath(x, y, margin = 80) {
+        const mapCfg = this.mapConfig;
+        const waypoints = [
+          mapCfg.castleBlue,
+          ...mapCfg.pathWaypoints,
+          mapCfg.castleRed
+        ];
+
+        for (let i = 0; i < waypoints.length - 1; i++) {
+          const p1 = waypoints[i];
+          const p2 = waypoints[i + 1];
+
+          // Calculate distance from point to line segment
+          const lengthSq = (p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2;
+          if (lengthSq === 0) {
+            const dist = Math.sqrt((x - p1.x) ** 2 + (y - p1.y) ** 2);
+            if (dist < margin) return true;
+            continue;
+          }
+
+          let t = Math.max(0, Math.min(1, ((x - p1.x) * (p2.x - p1.x) + (y - p1.y) * (p2.y - p1.y)) / lengthSq));
+          const closestX = p1.x + t * (p2.x - p1.x);
+          const closestY = p1.y + t * (p2.y - p1.y);
+          const dist = Math.sqrt((x - closestX) ** 2 + (y - closestY) ** 2);
+
+          if (dist < margin) return true;
+        }
+        return false;
+      }
+
+      addDecorations() {
+        this.decorations = [];
+        const mapCfg = this.mapConfig;
+
+        // Use level-specific tree positions
+        const treePositions = mapCfg.trees || [];
+
+        // Add trees
+        treePositions.forEach((pos, idx) => {
+          if (!this.isOnPath(pos.x, pos.y, 100)) {
+            const tree = this.add.sprite(pos.x, pos.y, `tree-${pos.type}`);
+            tree.setScale(0.6);
+            tree.setDepth(10 + pos.y * 0.01); // Sort by Y position
+            // Delay animation start for variation
+            this.time.delayedCall(idx * 100, () => {
+              if (tree.active) tree.anims.play(`tree-${pos.type}-sway`, true);
+            });
+            this.decorations.push(tree);
+          }
+        });
+
+        // Use level-specific rock positions
+        const rockPositions = mapCfg.rocks || [];
+
+        // Add rocks
+        rockPositions.forEach(pos => {
+          if (!this.isOnPath(pos.x, pos.y, 70)) {
+            const rock = this.add.image(pos.x, pos.y, `rock-${pos.type}`);
+            rock.setScale(0.8);
+            rock.setDepth(8);
+            this.decorations.push(rock);
+          }
+        });
+
+        // Use level-specific bush positions
+        const bushPositions = mapCfg.bushes || [];
+
+        // Add bushes
+        bushPositions.forEach((pos, idx) => {
+          if (!this.isOnPath(pos.x, pos.y, 65)) {
+            const bush = this.add.sprite(pos.x, pos.y, `bush-${pos.type}`);
+            bush.setScale(0.5);
+            bush.setDepth(9);
+            // Delay animation start for variation
+            this.time.delayedCall(idx * 80, () => {
+              if (bush.active) bush.anims.play(`bush-${pos.type}-sway`, true);
+            });
+            this.decorations.push(bush);
+          }
+        });
+      }
+
+      createCastles() {
+        const CASTLE_SCALE = 0.5;
+        const mapCfg = this.mapConfig;
+        const castleBluePos = mapCfg.castleBlue;
+        const castleRedPos = mapCfg.castleRed;
+
+        // Blue castle (level-specific position)
+        this.gameState.teams.blue.castle = this.physics.add.staticSprite(castleBluePos.x, castleBluePos.y, 'castle-blue');
+        this.gameState.teams.blue.castle.setDepth(20);
+        this.gameState.teams.blue.castle.setScale(CASTLE_SCALE);
+        this.gameState.teams.blue.castle.team = 'blue';
+
+        // Red castle (level-specific position)
+        this.gameState.teams.red.castle = this.physics.add.staticSprite(castleRedPos.x, castleRedPos.y, 'castle-red');
+        this.gameState.teams.red.castle.setDepth(20);
+        this.gameState.teams.red.castle.setScale(CASTLE_SCALE);
+        this.gameState.teams.red.castle.team = 'red';
+
+        // Castle hurtboxes (shrunk by 12px from scaled size)
+        const castleWidth = 320 * CASTLE_SCALE - 24;
+        const castleHeight = 256 * CASTLE_SCALE - 24;
+
+        // Match physics bodies to the hurtboxes so units can't walk through the castle.
+        this.gameState.teams.blue.castle.body.setSize(castleWidth, castleHeight, true);
+        this.gameState.teams.blue.castle.body.updateFromGameObject();
+        this.gameState.teams.red.castle.body.setSize(castleWidth, castleHeight, true);
+        this.gameState.teams.red.castle.body.updateFromGameObject();
+
+        this.gameState.teams.blue.castleHurtbox = new Phaser.Geom.Rectangle(
+          castleBluePos.x - castleWidth/2,
+          castleBluePos.y - castleHeight/2,
+          castleWidth,
+          castleHeight
+        );
+
+        this.gameState.teams.red.castleHurtbox = new Phaser.Geom.Rectangle(
+          castleRedPos.x - castleWidth/2,
+          castleRedPos.y - castleHeight/2,
+          castleWidth,
+          castleHeight
+        );
+
+        // Update UI
+        this.registry.events.emit('updateCastleHP', 'blue', this.gameState.teams.blue.castleHP, this.gameState.teams.blue.castleMaxHP);
+        this.registry.events.emit('updateCastleHP', 'red', this.gameState.teams.red.castleHP, this.gameState.teams.red.castleMaxHP);
+      }
+
+      createVignette() {
+        this.vignetteOverlay = this.add.graphics();
+        this.vignetteOverlay.setDepth(200);
+        this.vignetteOverlay.setScrollFactor(0);
+        this.updateVignette(0.1);
+      }
+
+      updateVignette(alpha) {
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+
+        this.vignetteOverlay.clear();
+
+        // Create vignette with edge gradients (dark edges, clear center)
+        const edgeSize = 120;
+        const steps = 15;
+
+        for (let i = 0; i < steps; i++) {
+          const t = i / steps;
+          const a = alpha * (1 - t) * (1 - t);
+
+          this.vignetteOverlay.fillStyle(0x000000, a);
+
+          // Top edge
+          this.vignetteOverlay.fillRect(0, edgeSize * t, width, edgeSize / steps);
+          // Bottom edge
+          this.vignetteOverlay.fillRect(0, height - edgeSize + edgeSize * t, width, edgeSize / steps);
+          // Left edge
+          this.vignetteOverlay.fillRect(edgeSize * t, 0, edgeSize / steps, height);
+          // Right edge
+          this.vignetteOverlay.fillRect(width - edgeSize + edgeSize * t, 0, edgeSize / steps, height);
+        }
+      }
+
+      setupInput() {
+        // Keyboard hotkeys
+        this.input.keyboard.on('keydown-W', () => this.trySpawnUnit('warrior'));
+        this.input.keyboard.on('keydown-A', () => this.trySpawnUnit('archer'));
+        this.input.keyboard.on('keydown-P', () => this.togglePause());
+        this.input.keyboard.on('keydown-ESC', () => this.togglePause());
+        this.input.keyboard.on('keydown-M', () => this.goToWorldMap());
+
+        // Shift key for command queue
+        this.shiftKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT);
+
+        // Selection state
+        this.isSelecting = false;
+        this.selectionStart = { x: 0, y: 0 };
+
+        // Mouse/touch input
+        this.input.on('pointerdown', (pointer) => {
+          if (this.gameState.isPaused) return;
+
+          const worldX = pointer.worldX;
+          const worldY = pointer.worldY;
+
+          if (pointer.rightButtonDown()) {
+            // Right click - issue command
+            this.issueCommand(worldX, worldY);
+          } else if (pointer.leftButtonDown()) {
+            // Check if clicked on spawn buttons (handled by UI scene)
+            // Left click - start selection
+            this.startSelection(worldX, worldY);
+          }
+        });
+
+        this.input.on('pointermove', (pointer) => {
+          if (this.gameState.isPaused) return;
+          if (pointer.isDown && this.isSelecting) {
+            this.updateSelectionBox(pointer.worldX, pointer.worldY);
+          }
+        });
+
+        this.input.on('pointerup', (pointer) => {
+          if (this.gameState.isPaused) return;
+
+          if (pointer.leftButtonReleased() && this.isSelecting) {
+            this.endSelection(pointer.worldX, pointer.worldY);
+          } else if (pointer.wasTouch && !this.isSelecting) {
+            // Touch: tap to select or command
+            this.handleTouchInput(pointer.worldX, pointer.worldY);
+          }
+        });
+
+        // Custom cursor
+        this.input.setDefaultCursor('url(assets/tinyswords/UI%20Elements/UI%20Elements/Cursors/Cursor_01.png), pointer');
+      }
+
+      startSelection(x, y) {
+        this.isSelecting = true;
+        this.selectionStart = { x, y };
+        this.selectionGraphics.clear();
+      }
+
+      updateSelectionBox(x, y) {
+        const box = new Phaser.Geom.Rectangle(
+          Math.min(this.selectionStart.x, x),
+          Math.min(this.selectionStart.y, y),
+          Math.abs(x - this.selectionStart.x),
+          Math.abs(y - this.selectionStart.y)
+        );
+
+        this.selectionGraphics.clear();
+        this.selectionGraphics.lineStyle(2, COLORS.HIGHLIGHT, 1);
+        this.selectionGraphics.strokeRectShape(box);
+        this.selectionGraphics.fillStyle(COLORS.HIGHLIGHT, 0.2);
+        this.selectionGraphics.fillRectShape(box);
+      }
+
+      endSelection(x, y) {
+        this.isSelecting = false;
+        this.selectionGraphics.clear();
+
+        const boxWidth = Math.abs(x - this.selectionStart.x);
+        const boxHeight = Math.abs(y - this.selectionStart.y);
+
+        // Clear previous selection
+        this.clearSelection();
+
+        if (boxWidth < 10 && boxHeight < 10) {
+          // Click select - find nearest friendly unit
+          const unit = this.selectUnitAt(this.selectionStart.x, this.selectionStart.y);
+          if (unit) {
+            this.selectUnit(unit);
+          }
+        } else {
+          // Box select
+          const box = new Phaser.Geom.Rectangle(
+            Math.min(this.selectionStart.x, x),
+            Math.min(this.selectionStart.y, y),
+            boxWidth,
+            boxHeight
+          );
+
+          this.gameState.teams.blue.units.children.iterate(unit => {
+            if (unit && unit.active && box.contains(unit.x, unit.y)) {
+              this.selectUnit(unit);
+            }
+          });
+        }
+      }
+
+      selectUnitAt(x, y) {
+        const SELECT_RADIUS = 28;
+        let nearest = null;
+        let nearestDist = SELECT_RADIUS;
+
+        this.gameState.teams.blue.units.children.iterate(unit => {
+          if (!unit || !unit.active) return;
+          const dist = Phaser.Math.Distance.Between(x, y, unit.x, unit.y);
+          if (dist < nearestDist) {
+            nearest = unit;
+            nearestDist = dist;
+          }
+        });
+
+        return nearest;
+      }
+
+      selectUnit(unit) {
+        if (!unit.isSelected) {
+          unit.isSelected = true;
+          this.gameState.selectedUnits.push(unit);
+          this.createSelectionRing(unit);
+          this.spawnSelectionPing(unit.x, unit.y);
+        }
+      }
+
+      clearSelection() {
+        this.gameState.selectedUnits.forEach(unit => {
+          if (unit && unit.active) {
+            unit.isSelected = false;
+            if (unit.selectionRing) {
+              unit.selectionRing.destroy();
+              unit.selectionRing = null;
+            }
+          }
+        });
+        this.gameState.selectedUnits = [];
+      }
+
+      createSelectionRing(unit) {
+        if (unit.selectionRing) {
+          unit.selectionRing.destroy();
+        }
+
+        unit.selectionRing = this.add.ellipse(unit.x, unit.y + 20, 50, 25);
+        unit.selectionRing.setStrokeStyle(2, COLORS.HIGHLIGHT);
+        unit.selectionRing.setFillStyle(COLORS.HIGHLIGHT, 0.3);
+        unit.selectionRing.setDepth(29);
+      }
+
+      spawnSelectionPing(x, y) {
+        const ping = this.add.circle(x, y, 10, COLORS.HIGHLIGHT, 0.5);
+        ping.setDepth(130);
+
+        this.tweens.add({
+          targets: ping,
+          scale: 2,
+          alpha: 0,
+          duration: 120,
+          onComplete: () => ping.destroy()
+        });
+      }
+
+      handleTouchInput(x, y) {
+        // Check if tapped on enemy
+        const enemy = this.getEnemyAtPosition(x, y);
+        if (enemy && this.gameState.selectedUnits.length > 0) {
+          this.issueAttackCommand(enemy);
+          return;
+        }
+
+        // Check if tapped on friendly
+        const friendly = this.selectUnitAt(x, y);
+        if (friendly) {
+          this.clearSelection();
+          this.selectUnit(friendly);
+          return;
+        }
+
+        // Tap on ground = move command
+        if (this.gameState.selectedUnits.length > 0) {
+          this.issueMoveCommand(x, y);
+        }
+      }
+
+      getEnemyAtPosition(x, y) {
+        const SELECT_RADIUS = 40;
+        let nearest = null;
+        let nearestDist = SELECT_RADIUS;
+
+        this.gameState.teams.red.units.children.iterate(unit => {
+          if (!unit || !unit.active) return;
+          const dist = Phaser.Math.Distance.Between(x, y, unit.x, unit.y);
+          if (dist < nearestDist) {
+            nearest = unit;
+            nearestDist = dist;
+          }
+        });
+
+        // Check if clicking on castle
+        if (!nearest && Phaser.Geom.Rectangle.Contains(this.gameState.teams.red.castleHurtbox, x, y)) {
+          return this.gameState.teams.red.castle;
+        }
+
+        return nearest;
+      }
+
+      issueCommand(x, y) {
+        if (this.gameState.selectedUnits.length === 0) return;
+
+        const enemy = this.getEnemyAtPosition(x, y);
+        if (enemy) {
+          this.issueAttackCommand(enemy);
+        } else {
+          this.issueMoveCommand(x, y);
+        }
+      }
+
+      issueAttackCommand(target) {
+        this.gameState.selectedUnits.forEach(unit => {
+          if (unit && unit.active) {
+            unit.currentTarget = target;
+            unit.commandQueue = [];
+            unit.lastCommandTime = this.time.now;
+          }
+        });
+
+        // Visual feedback
+        this.spawnCommandMarker(target.x, target.y, true);
+      }
+
+      issueMoveCommand(x, y) {
+        this.gameState.selectedUnits.forEach((unit, index) => {
+          if (unit && unit.active) {
+            // Spread units slightly
+            const spread = Math.min(this.gameState.selectedUnits.length - 1, 3) * 20;
+            const angle = (index / this.gameState.selectedUnits.length) * Math.PI * 2;
+            const offsetX = Math.cos(angle) * spread;
+            const offsetY = Math.sin(angle) * spread;
+
+            unit.moveTarget = { x: x + offsetX, y: y + offsetY };
+            unit.currentTarget = null;
+            unit.lastCommandTime = this.time.now;
+          }
+        });
+
+        // Visual feedback
+        this.spawnCommandMarker(x, y, false);
+      }
+
+      spawnCommandMarker(x, y, isAttack) {
+        // Dust puff
+        const dust = this.add.sprite(x, y, 'dust-01');
+        dust.setDepth(120);
+        dust.setScale(0.8);
+        dust.anims.play('dust-puff');
+        dust.on('animationcomplete', () => dust.destroy());
+
+        // Ring effect
+        const ring = this.add.circle(x, y, 15);
+        ring.setStrokeStyle(2, isAttack ? COLORS.RED_ACCENT : COLORS.HIGHLIGHT);
+        ring.setDepth(120);
+
+        this.tweens.add({
+          targets: ring,
+          scale: 1.5,
+          alpha: 0,
+          duration: 140,
+          onComplete: () => ring.destroy()
+        });
+      }
+
+      setupCollisions() {
+        // Unit vs Unit (same team - separation)
+        this.physics.add.collider(
+          this.gameState.teams.blue.units,
+          this.gameState.teams.blue.units,
+          (a, b) => this.separateUnits(a, b)
+        );
+        this.physics.add.collider(
+          this.gameState.teams.red.units,
+          this.gameState.teams.red.units,
+          (a, b) => this.separateUnits(a, b)
+        );
+
+        // Units vs enemy castle (blocking)
+        this.physics.add.collider(this.gameState.teams.blue.units, this.gameState.teams.red.castle);
+        this.physics.add.collider(
+          this.gameState.teams.red.units,
+          this.gameState.teams.blue.castle,
+          (unit, castle) => {
+            if (!unit || !unit.active) return;
+            if (unit.currentTarget && unit.currentTarget.active !== false && unit.currentTarget !== castle) return;
+            unit.currentTarget = castle;
+            unit.moveTarget = null;
+          }
+        );
+
+        // Arrow vs Units
+        this.physics.add.overlap(
+          this.gameState.projectiles,
+          this.gameState.teams.blue.units,
+          (arrow, unit) => {
+            if (arrow.team !== 'blue') {
+              this.unitTakeDamage(unit, arrow.damage, arrow);
+              arrow.destroy();
+            }
+          }
+        );
+
+        this.physics.add.overlap(
+          this.gameState.projectiles,
+          this.gameState.teams.red.units,
+          (arrow, unit) => {
+            if (arrow.team !== 'red') {
+              this.unitTakeDamage(unit, arrow.damage, arrow);
+              arrow.destroy();
+            }
+          }
+        );
+      }
+
+      separateUnits(unitA, unitB) {
+        const dist = Phaser.Math.Distance.Between(unitA.x, unitA.y, unitB.x, unitB.y);
+        if (dist < 22 && dist > 0) {
+          const angle = Phaser.Math.Angle.Between(unitB.x, unitB.y, unitA.x, unitA.y);
+          const separation = 60;
+          unitA.body.velocity.x += Math.cos(angle) * separation * 0.5;
+          unitA.body.velocity.y += Math.sin(angle) * separation * 0.5;
+        }
+      }
+
+      trySpawnUnit(unitType) {
+        const cost = UNIT_STATS[unitType].supplyCost;
+        const team = this.gameState.teams.blue;
+        const levelCfg = this.gameState.levelConfig;
+
+        // Check if archers are allowed for this level
+        if (unitType === 'archer' && !levelCfg.allowArchers) {
+          this.denySpawnFeedback();
+          return;
+        }
+
+        // Check max defenders limit
+        const currentDefenders = team.units.children.getArray().filter(u => u && u.active).length;
+        if (currentDefenders >= levelCfg.maxDefenders) {
+          this.denySpawnFeedback();
+          return;
+        }
+
+        if (team.supply < cost) {
+          this.denySpawnFeedback();
+          return;
+        }
+
+        team.supply -= cost;
+        this.registry.events.emit('updateSupply', team.supply, team.maxSupply);
+
+        const spawnPos = this.mapConfig.spawnBlue;
+        const unit = this.spawnUnit('blue', unitType, spawnPos.x, spawnPos.y);
+
+        // Spawn animation
+        unit.setScale(0.4);
+        this.tweens.add({
+          targets: unit,
+          scale: 0.5,
+          duration: 120,
+          ease: 'Back.easeOut'
+        });
+
+        // Dust puff
+        this.spawnDustEffect(spawnPos.x, spawnPos.y);
+
+        // Update defender count
+        this.updateDefenderCount();
+      }
+
+      updateDefenderCount() {
+        const team = this.gameState.teams.blue;
+        const count = team.units.children.getArray().filter(u => u && u.active).length;
+        this.registry.events.emit('updateDefenders', count, this.gameState.levelConfig.maxDefenders);
+      }
+
+      spawnUnit(team, unitType, x, y) {
+        const textureKey = `${unitType}-${team}-idle`;
+        const unit = this.physics.add.sprite(x, y, textureKey);
+
+        unit.team = team;
+        unit.unitType = unitType;
+        unit.hp = UNIT_STATS[unitType].maxHP;
+        unit.maxHP = UNIT_STATS[unitType].maxHP;
+        unit.state = 'idle';
+        unit.moveTarget = null;
+        unit.currentTarget = null;
+        unit.attackCooldown = 0;
+        unit.isInWindup = false;
+        unit.lastCommandTime = 0;
+        unit.nearMissCooldown = 0;
+        unit.isSelected = false;
+        unit.selectionRing = null;
+        unit.idleTransitionTimer = 0;
+
+        // Set scale
+        unit.setScale(0.5);
+        unit.setDepth(30);
+
+        // Physics body
+        const hurtRadius = UNIT_STATS[unitType].hurtRadius * 0.5;
+        unit.body.setCircle(hurtRadius, 96 * 0.5 - hurtRadius, 96 * 0.5 - hurtRadius);
+        unit.body.setCollideWorldBounds(true);
+
+        // Add to group
+        this.gameState.teams[team].units.add(unit);
+
+        // Start idle animation
+        unit.anims.play(`${unitType}-${team}-idle`, true);
+
+        // Create health bar
+        this.createUnitHealthBar(unit);
+
+        // Set default target for AI units - use waypoint system (level-specific)
+        if (team === 'red') {
+          // Red units follow waypoints in reverse (from red spawn to blue castle)
+          unit.waypointIndex = 0;
+          unit.waypoints = [...this.mapConfig.pathWaypoints].reverse();
+          unit.waypoints.push({ x: this.mapConfig.castleBlue.x, y: this.mapConfig.castleBlue.y });
+          unit.moveTarget = unit.waypoints[0];
+        }
+
+        return unit;
+      }
+
+      // Get next waypoint for a unit following the path
+      getNextWaypoint(unit) {
+        if (!unit.waypoints || unit.waypointIndex >= unit.waypoints.length - 1) {
+          return null;
+        }
+        unit.waypointIndex++;
+        return unit.waypoints[unit.waypointIndex];
+      }
+
+      createUnitHealthBar(unit) {
+        unit.healthBarBg = this.add.rectangle(0, 0, 40, 6, 0x1B1F2A);
+        unit.healthBarFill = this.add.rectangle(0, 0, 38, 4,
+          unit.team === 'blue' ? COLORS.BLUE_PRIMARY : COLORS.RED_PRIMARY
+        );
+        unit.healthBarBg.setDepth(140);
+        unit.healthBarFill.setDepth(141);
+        unit.healthBarBg.setVisible(false);
+        unit.healthBarFill.setVisible(false);
+        unit.healthBarShowTimer = 0;
+      }
+
+      updateUnitHealthBar(unit) {
+        if (!unit || !unit.active) return;
+        if (!unit.healthBarBg || !unit.healthBarFill) return;
+
+        const x = unit.x;
+        const y = unit.y - 50;
+        const percent = unit.hp / unit.maxHP;
+
+        unit.healthBarBg.setPosition(x, y);
+        unit.healthBarFill.setPosition(x - 19 + (38 * percent) / 2, y);
+        unit.healthBarFill.width = 38 * percent;
+
+        if (unit.healthBarShowTimer > 0) {
+          unit.healthBarBg.setVisible(true);
+          unit.healthBarFill.setVisible(true);
+          unit.healthBarBg.setAlpha(1);
+          unit.healthBarFill.setAlpha(1);
+        } else {
+          unit.healthBarBg.setAlpha(0.3);
+          unit.healthBarFill.setAlpha(0.3);
+        }
+      }
+
+      spawnDustEffect(x, y) {
+        const dust = this.add.sprite(x, y, 'dust-01');
+        dust.setDepth(120);
+        dust.setScale(0.8);
+        dust.anims.play('dust-puff');
+        dust.on('animationcomplete', () => dust.destroy());
+      }
+
+      denySpawnFeedback() {
+        this.registry.events.emit('denySpawn');
+      }
+
+      spawnArrow(shooter, target) {
+        const startX = shooter.x;
+        const startY = shooter.y - 20;
+        const targetX = target.x;
+        const targetY = target.y;
+
+        const arrow = this.add.sprite(startX, startY, `arrow-${shooter.team}`);
+        arrow.team = shooter.team;
+        arrow.damage = UNIT_STATS.archer.damage;
+        arrow.setDepth(110);
+        arrow.setScale(1);
+
+        // Calculate angle to target
+        const angle = Phaser.Math.Angle.Between(startX, startY, targetX, targetY);
+        arrow.setRotation(angle);
+
+        // Arc trajectory using tween
+        const distance = Phaser.Math.Distance.Between(startX, startY, targetX, targetY);
+        const duration = (distance / 420) * 1000; // Based on speed of 420 px/sec
+        const arcHeight = Math.min(distance * 0.3, 80); // Arc height proportional to distance
+
+        // Store for collision checking
+        arrow.targetX = targetX;
+        arrow.targetY = targetY;
+        arrow.isArrow = true;
+
+        this.tweens.add({
+          targets: arrow,
+          x: targetX,
+          y: targetY,
+          duration: duration,
+          ease: 'Linear',
+          onUpdate: (tween) => {
+            // Create arc by adjusting Y based on progress
+            const progress = tween.progress;
+            const arcOffset = Math.sin(progress * Math.PI) * arcHeight;
+            const baseY = Phaser.Math.Linear(startY, targetY, progress);
+            arrow.y = baseY - arcOffset;
+
+            // Update rotation to follow arc
+            if (progress < 0.5) {
+              arrow.rotation = angle - (arcOffset / 100);
+            } else {
+              arrow.rotation = angle + ((arcHeight - arcOffset) / 100);
+            }
+
+            // Scale slightly during flight for depth effect
+            const scaleBoost = 1 + Math.sin(progress * Math.PI) * 0.2;
+            arrow.setScale(scaleBoost);
+
+            // Check collision with enemies during flight
+            this.checkArrowCollision(arrow);
+          },
+          onComplete: () => {
+            // Check final collision and destroy
+            this.checkArrowCollision(arrow, true);
+            if (arrow.active) {
+              this.spawnDustEffect(arrow.x, arrow.y);
+              arrow.destroy();
+            }
+          }
+        });
+
+        return arrow;
+      }
+
+      checkArrowCollision(arrow, isFinal = false) {
+        if (!arrow.active) return;
+
+        const hitRadius = isFinal ? 25 : 15;
+        const enemies = arrow.team === 'blue' ? this.gameState.teams.red.units : this.gameState.teams.blue.units;
+
+        // Check unit collision
+        enemies.children.iterate(enemy => {
+          if (!enemy || !enemy.active) return;
+          const dist = Phaser.Math.Distance.Between(arrow.x, arrow.y, enemy.x, enemy.y);
+          if (dist < hitRadius) {
+            this.unitTakeDamage(enemy, arrow.damage, arrow);
+            arrow.destroy();
+          }
+        });
+
+        // Check castle collision
+        if (!arrow.active) return;
+        const enemyCastle = arrow.team === 'blue' ? this.gameState.teams.red : this.gameState.teams.blue;
+        if (Phaser.Geom.Rectangle.Contains(enemyCastle.castleHurtbox, arrow.x, arrow.y)) {
+          this.castleTakeDamage(enemyCastle.castle.team, arrow.damage);
+          arrow.destroy();
+        }
+      }
+
+      // Constrain unit to stay near the path (level-specific)
+      constrainToPath(unit) {
+        if (this.isCastleTarget(unit.currentTarget)) return;
+
+        const mapCfg = this.mapConfig;
+        const castleSkipRadius = 140;
+        if (Phaser.Math.Distance.Between(unit.x, unit.y, mapCfg.castleBlue.x, mapCfg.castleBlue.y) < castleSkipRadius) return;
+        if (Phaser.Math.Distance.Between(unit.x, unit.y, mapCfg.castleRed.x, mapCfg.castleRed.y) < castleSkipRadius) return;
+
+        const waypoints = [
+          mapCfg.castleBlue,
+          ...mapCfg.pathWaypoints,
+          mapCfg.castleRed
+        ];
+        const maxDist = MAP.PATH_WIDTH * 0.8;
+
+        let closestDist = Infinity;
+        let closestPoint = { x: unit.x, y: unit.y };
+
+        for (let i = 0; i < waypoints.length - 1; i++) {
+          const p1 = waypoints[i];
+          const p2 = waypoints[i + 1];
+          const dx = p2.x - p1.x;
+          const dy = p2.y - p1.y;
+          const len2 = dx * dx + dy * dy;
+          const t = Math.max(0, Math.min(1, ((unit.x - p1.x) * dx + (unit.y - p1.y) * dy) / len2));
+          const projX = p1.x + t * dx;
+          const projY = p1.y + t * dy;
+          const dist = Phaser.Math.Distance.Between(unit.x, unit.y, projX, projY);
+          if (dist < closestDist) {
+            closestDist = dist;
+            closestPoint = { x: projX, y: projY };
+          }
+        }
+
+        if (closestDist > maxDist) {
+          unit.x = Phaser.Math.Linear(unit.x, closestPoint.x, 0.3);
+          unit.y = Phaser.Math.Linear(unit.y, closestPoint.y, 0.3);
+        }
+      }
+
+      isCastleTarget(target) {
+        return !!target && (target === this.gameState.teams.blue.castle || target === this.gameState.teams.red.castle);
+      }
+
+      getClosestPointOnRect(rect, x, y) {
+        return {
+          x: Phaser.Math.Clamp(x, rect.x, rect.x + rect.width),
+          y: Phaser.Math.Clamp(y, rect.y, rect.y + rect.height)
+        };
+      }
+
+      getTargetingInfo(unit, target) {
+        if (this.isCastleTarget(target)) {
+          const rect = this.gameState.teams[target.team].castleHurtbox;
+          const aim = this.getClosestPointOnRect(rect, unit.x, unit.y);
+          const centerDist = Phaser.Math.Distance.Between(unit.x, unit.y, aim.x, aim.y);
+          const unitRadius = UNIT_STATS[unit.unitType].hurtRadius * 0.5;
+          const edgeDist = Math.max(0, centerDist - unitRadius);
+          return { aimX: aim.x, aimY: aim.y, dist: edgeDist };
+        }
+
+        return { aimX: target.x, aimY: target.y, dist: Phaser.Math.Distance.Between(unit.x, unit.y, target.x, target.y) };
+      }
+
+      findTarget(unit) {
+        const aggroRadius = UNIT_STATS[unit.unitType].aggroRadius;
+        let nearestEnemy = null;
+        let nearestDist = aggroRadius;
+
+        const enemies = unit.team === 'blue' ? this.gameState.teams.red.units : this.gameState.teams.blue.units;
+
+        enemies.children.iterate(enemy => {
+          if (!enemy || !enemy.active) return;
+          const dist = Phaser.Math.Distance.Between(unit.x, unit.y, enemy.x, enemy.y);
+          if (dist < nearestDist) {
+            nearestEnemy = enemy;
+            nearestDist = dist;
+          }
+        });
+
+        return nearestEnemy;
+      }
+
+      executeAttack(attacker, target) {
+        if (attacker.isInWindup || attacker.attackCooldown > 0) return;
+
+        console.log(`${attacker.unitType} attacking, target:`, target);
+        const stats = UNIT_STATS[attacker.unitType];
+        const targeting = this.getTargetingInfo(attacker, target);
+
+        // Start windup
+        attacker.isInWindup = true;
+        attacker.state = 'attacking';
+
+        // Face target
+        attacker.flipX = targeting.aimX < attacker.x;
+
+        // Play attack animation
+        const animKey = attacker.unitType === 'warrior'
+          ? `warrior-${attacker.team}-attack`
+          : `archer-${attacker.team}-shoot`;
+        attacker.anims.play(animKey, true);
+
+        // After windup, deal damage
+        this.time.delayedCall(stats.windupTime, () => {
+          if (!attacker.active) return;
+
+          if (attacker.unitType === 'warrior') {
+            // Melee hit
+            if (target && target.active !== false) {
+              if (target.team && target.hp !== undefined) {
+                // It's a unit
+                this.unitTakeDamage(target, stats.damage, attacker);
+              } else if (target.team) {
+                // It's a castle
+                this.castleTakeDamage(target.team, stats.damage);
+              }
+              this.spawnDustEffect(targeting.aimX, targeting.aimY);
+            }
+          } else {
+            // Spawn arrow for archers
+            if (target && (target.active !== false || target.team)) {
+              this.spawnArrow(attacker, target);
+            }
+          }
+
+          attacker.isInWindup = false;
+          attacker.attackCooldown = stats.attackCooldown;
+          attacker.state = 'idle';
+        });
+      }
+
+      unitTakeDamage(unit, damage, source) {
+        unit.hp -= damage;
+        unit.healthBarShowTimer = 2000;
+
+        // Check near miss
+        if (unit.team === 'blue') {
+          this.checkNearMiss(unit, damage);
+        }
+
+        // Damage flash
+        unit.setTint(COLORS.DAMAGE_FLASH);
+        this.time.delayedCall(60, () => {
+          if (unit.active) unit.clearTint();
+        });
+
+        if (unit.hp <= 0) {
+          this.killUnit(unit);
+        }
+      }
+
+      castleTakeDamage(team, damage) {
+        const teamData = this.gameState.teams[team];
+        const prevHP = teamData.castleHP;
+        teamData.castleHP = Math.max(0, teamData.castleHP - damage);
+
+        // Screen shake every 60 damage chunk
+        if (Math.floor(prevHP / 60) > Math.floor(teamData.castleHP / 60)) {
+          this.cameras.main.shake(120, 0.006);
+        }
+
+        // Score for damaging enemy castle
+        if (team === 'red') {
+          const scoreGain = Math.floor(damage / 10);
+          this.addScore(scoreGain);
+        }
+
+        // Update UI
+        this.registry.events.emit('updateCastleHP', team, teamData.castleHP, teamData.castleMaxHP);
+
+        // Low HP pulse
+        if (teamData.castleHP > 0 && teamData.castleHP < teamData.castleMaxHP * 0.25) {
+          this.registry.events.emit('castleLowHP', team);
+        }
+
+        // Check destruction
+        if (teamData.castleHP <= 0) {
+          this.triggerGameOver(team === 'red');
+        }
+      }
+
+      checkNearMiss(unit, damage) {
+        if (unit.nearMissCooldown > 0) return;
+
+        const timeSinceCommand = this.time.now - unit.lastCommandTime;
+
+        // "Save": would be lethal, commanded within 350ms
+        if (unit.hp <= 0 && timeSinceCommand < 350) {
+          // Actually didn't die, so this is a save if they survive
+        }
+      }
+
+      triggerNearMissReward(unit, type) {
+        if (unit.nearMissCooldown > 0) return;
+
+        unit.nearMissCooldown = 4000;
+
+        // Slow-mo
+        this.time.timeScale = 0.85;
+        this.time.delayedCall(220, () => {
+          this.time.timeScale = 1;
+        });
+
+        // Gold outline flash
+        unit.setTint(COLORS.HIGHLIGHT);
+        this.time.delayedCall(120, () => {
+          if (unit.active) unit.clearTint();
+        });
+
+        // Floating text
+        const text = this.add.text(unit.x, unit.y - 30, `${type} +5`, {
+          fontSize: '16px',
+          fill: '#F6E27F',
+          fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(150);
+
+        this.tweens.add({
+          targets: text,
+          y: text.y - 24,
+          alpha: 0,
+          duration: 600,
+          onComplete: () => text.destroy()
+        });
+
+        this.addScore(5);
+      }
+
+      killUnit(unit) {
+        // Score for enemy kills
+        if (unit.team === 'red') {
+          this.addScore(15);
+        }
+
+        const wasBlue = unit.team === 'blue';
+
+        // Remove from selection
+        const selIndex = this.gameState.selectedUnits.indexOf(unit);
+        if (selIndex > -1) {
+          this.gameState.selectedUnits.splice(selIndex, 1);
+        }
+
+        // Destroy selection ring
+        if (unit.selectionRing) {
+          unit.selectionRing.destroy();
+        }
+
+        // Destroy health bar
+        if (unit.healthBarBg) unit.healthBarBg.destroy();
+        if (unit.healthBarFill) unit.healthBarFill.destroy();
+
+        // Death effect
+        unit.setTint(COLORS.DAMAGE_FLASH);
+
+        this.tweens.add({
+          targets: unit,
+          alpha: 0,
+          duration: 180,
+          onComplete: () => {
+            this.spawnDeathDust(unit.x, unit.y);
+            this.cameras.main.shake(90, 0.003);
+            unit.destroy();
+
+            // Update defender count if blue unit died
+            if (wasBlue) {
+              this.updateDefenderCount();
+            }
+          }
+        });
+      }
+
+      spawnDeathDust(x, y) {
+        const particleCount = Phaser.Math.Between(6, 10);
+
+        for (let i = 0; i < particleCount; i++) {
+          const angle = (Math.PI * 2 * i) / particleCount;
+          const dist = Phaser.Math.Between(20, 40);
+
+          const particle = this.add.circle(x, y, 4, COLORS.DIRT);
+          particle.setDepth(120);
+
+          this.tweens.add({
+            targets: particle,
+            x: x + Math.cos(angle) * dist,
+            y: y + Math.sin(angle) * dist,
+            alpha: 0,
+            duration: 300,
+            onComplete: () => particle.destroy()
+          });
+        }
+      }
+
+      addScore(amount) {
+        const previousScore = this.gameState.score;
+        this.gameState.score += amount;
+
+        // Check milestone
+        const prevMilestone = Math.floor(previousScore / 250);
+        const newMilestone = Math.floor(this.gameState.score / 250);
+
+        if (newMilestone > prevMilestone) {
+          this.celebrateMilestone();
+        }
+
+        // Check high score
+        if (this.gameState.score > this.gameState.highScore) {
+          this.gameState.highScore = this.gameState.score;
+          localStorage.setItem('castle-clash-duel_highscore', this.gameState.highScore.toString());
+        }
+
+        this.registry.events.emit('updateScore', this.gameState.score, this.gameState.highScore);
+      }
+
+      celebrateMilestone() {
+        this.registry.events.emit('milestone');
+      }
+
+      togglePause() {
+        if (this.gameState.isPaused) {
+          this.scene.resume('GameScene');
+          this.scene.stop('PauseScene');
+          this.gameState.isPaused = false;
+        } else {
+          this.scene.pause('GameScene');
+          this.scene.launch('PauseScene');
+          this.gameState.isPaused = true;
+        }
+      }
+
+      goToWorldMap() {
+        this.scene.stop('UIScene');
+        this.scene.start('WorldMapScene');
+      }
+
+      triggerGameOver(victory) {
+        // Freeze
+        this.physics.pause();
+
+        // Strong shake
+        this.cameras.main.shake(260, 0.010);
+
+        this.time.delayedCall(350, () => {
+          // Stop scenes
+          this.scene.stop('UIScene');
+          this.scene.start('GameOverScene', {
+            victory: victory,
+            score: this.gameState.score,
+            highScore: this.gameState.highScore,
+            level: this.gameState.level
+          });
+        });
+      }
+
+      update(time, delta) {
+        if (this.gameState.isPaused) return;
+
+        // Update match time
+        this.gameState.matchTime += delta / 1000;
+
+        // Update supply
+        this.updateSupply(delta);
+
+        // Update AI
+        this.aiController.update(delta);
+
+        // Update units
+        this.updateUnits(delta);
+
+        // Update projectiles
+        this.updateProjectiles(time);
+
+        // Update intensity
+        this.updateIntensity();
+
+        // Sort units by Y for depth
+        this.sortUnitsByY();
+      }
+
+      updateSupply(delta) {
+        const team = this.gameState.teams.blue;
+        if (team.supply < team.maxSupply) {
+          this.gameState.supplyTimer += delta;
+          if (this.gameState.supplyTimer >= 2000) {
+            this.gameState.supplyTimer = 0;
+            team.supply = Math.min(team.maxSupply, team.supply + 1);
+            this.registry.events.emit('updateSupply', team.supply, team.maxSupply);
+          }
+        }
+      }
+
+      updateUnits(delta) {
+        const allUnits = [
+          ...this.gameState.teams.blue.units.children.getArray(),
+          ...this.gameState.teams.red.units.children.getArray()
+        ];
+
+        allUnits.forEach(unit => {
+          if (!unit || !unit.active) return;
+
+          // Update cooldowns
+          if (unit.attackCooldown > 0) {
+            unit.attackCooldown -= delta;
+          }
+          if (unit.nearMissCooldown > 0) {
+            unit.nearMissCooldown -= delta;
+          }
+          if (unit.healthBarShowTimer > 0) {
+            unit.healthBarShowTimer -= delta;
+          }
+
+          // Update health bar position
+          this.updateUnitHealthBar(unit);
+
+          // Update selection ring position
+          if (unit.selectionRing) {
+            unit.selectionRing.setPosition(unit.x, unit.y + 20);
+          }
+
+          // Find target if none
+          if (!unit.currentTarget || (unit.currentTarget.active === false)) {
+            unit.currentTarget = this.findTarget(unit);
+          }
+
+          const stats = UNIT_STATS[unit.unitType];
+
+          // If a red unit has reached the enemy castle area (it can't reach the exact center due to collision),
+          // switch from waypoint movement to castle combat.
+          if (!unit.currentTarget &&
+              unit.team === 'red' &&
+              unit.waypoints &&
+              unit.waypointIndex === unit.waypoints.length - 1) {
+            const castleInfo = this.getTargetingInfo(unit, this.gameState.teams.blue.castle);
+            if (castleInfo.dist <= stats.attackRange) {
+              unit.currentTarget = this.gameState.teams.blue.castle;
+              unit.moveTarget = null;
+            }
+          }
+
+          // Combat logic
+          if (unit.currentTarget && unit.currentTarget.active !== false) {
+            const { aimX: targetX, aimY: targetY, dist } = this.getTargetingInfo(unit, unit.currentTarget);
+
+            // Archer backstep
+            if (unit.unitType === 'archer' && dist < stats.minRange) {
+              const angle = Phaser.Math.Angle.Between(targetX, targetY, unit.x, unit.y);
+              unit.body.setVelocity(
+                Math.cos(angle) * stats.moveSpeed,
+                Math.sin(angle) * stats.moveSpeed
+              );
+              unit.state = 'moving';
+            } else if (dist <= stats.attackRange) {
+              // In range - attack
+              unit.body.setVelocity(0, 0);
+              if (!unit.isInWindup && unit.attackCooldown <= 0) {
+                this.executeAttack(unit, unit.currentTarget);
+              }
+            } else {
+              // Move toward target
+              const angle = Phaser.Math.Angle.Between(unit.x, unit.y, targetX, targetY);
+              unit.body.setVelocity(
+                Math.cos(angle) * stats.moveSpeed,
+                Math.sin(angle) * stats.moveSpeed
+              );
+              unit.state = 'moving';
+            }
+          } else if (unit.moveTarget) {
+            // Move to target location
+            const dist = Phaser.Math.Distance.Between(unit.x, unit.y, unit.moveTarget.x, unit.moveTarget.y);
+
+            if (dist < 25) {
+              // Reached waypoint - check for next one
+              const nextWaypoint = this.getNextWaypoint(unit);
+              if (nextWaypoint) {
+                unit.moveTarget = nextWaypoint;
+              } else {
+                unit.body.setVelocity(0, 0);
+                unit.moveTarget = null;
+                unit.state = 'idle';
+
+                // If this is an AI unit that reached the objective, start attacking the enemy castle.
+                if (unit.team === 'red') {
+                  unit.currentTarget = this.gameState.teams.blue.castle;
+                }
+              }
+            } else {
+              const angle = Phaser.Math.Angle.Between(unit.x, unit.y, unit.moveTarget.x, unit.moveTarget.y);
+              unit.body.setVelocity(
+                Math.cos(angle) * stats.moveSpeed,
+                Math.sin(angle) * stats.moveSpeed
+              );
+              unit.state = 'moving';
+            }
+          } else {
+            unit.body.setVelocity(0, 0);
+            unit.state = 'idle';
+          }
+
+          // Update animation
+          this.updateUnitAnimation(unit);
+
+          // Face movement direction
+          if (Math.abs(unit.body.velocity.x) > 1) {
+            unit.flipX = unit.body.velocity.x < 0;
+          }
+
+          // Keep unit near the path
+          this.constrainToPath(unit);
+        });
+
+        // Check arrow vs castle
+        this.checkArrowCastleCollisions();
+      }
+
+      checkArrowCastleCollisions() {
+        this.gameState.projectiles.children.iterate(arrow => {
+          if (!arrow || !arrow.active) return;
+
+          // Check blue castle
+          if (arrow.team === 'red' &&
+              Phaser.Geom.Rectangle.Contains(this.gameState.teams.blue.castleHurtbox, arrow.x, arrow.y)) {
+            this.castleTakeDamage('blue', arrow.damage);
+            arrow.destroy();
+            return;
+          }
+
+          // Check red castle
+          if (arrow.team === 'blue' &&
+              Phaser.Geom.Rectangle.Contains(this.gameState.teams.red.castleHurtbox, arrow.x, arrow.y)) {
+            this.castleTakeDamage('red', arrow.damage);
+            arrow.destroy();
+          }
+        });
+      }
+
+      updateUnitAnimation(unit) {
+        if (unit.isInWindup) return; // Don't interrupt attack animation
+
+        const animKey = unit.state === 'moving'
+          ? `${unit.unitType}-${unit.team}-run`
+          : `${unit.unitType}-${unit.team}-idle`;
+
+        if (!unit.anims.isPlaying || unit.anims.currentAnim.key !== animKey) {
+          unit.anims.play(animKey, true);
+        }
+      }
+
+      updateProjectiles(time) {
+        this.gameState.projectiles.children.iterate(arrow => {
+          if (!arrow || !arrow.active) return;
+
+          // Despawn after lifetime
+          if (time - arrow.spawnTime > arrow.lifetime) {
+            arrow.destroy();
+          }
+        });
+      }
+
+      updateIntensity() {
+        const score = this.gameState.score;
+        const time = this.gameState.matchTime;
+
+        let newLevel = 0;
+        if (score >= 700 || time >= 240) newLevel = 3;
+        else if (score >= 450 || time >= 180) newLevel = 2;
+        else if (score >= 200 || time >= 90) newLevel = 1;
+
+        if (newLevel !== this.gameState.intensityLevel) {
+          this.gameState.intensityLevel = newLevel;
+          this.applyIntensityEffects(newLevel);
+        }
+      }
+
+      applyIntensityEffects(level) {
+        const vignetteAlpha = 0.1 + level * 0.03;
+        this.updateVignette(vignetteAlpha);
+      }
+
+      sortUnitsByY() {
+        const allUnits = [
+          ...this.gameState.teams.blue.units.children.getArray(),
+          ...this.gameState.teams.red.units.children.getArray()
+        ];
+
+        allUnits.forEach(unit => {
+          if (unit && unit.active) {
+            unit.setDepth(30 + unit.y * 0.1);
+          }
+        });
+      }
+    }
+
+    // === AI CONTROLLER ===
+    class AIController {
+      constructor(scene) {
+        this.scene = scene;
+        this.spawnTimer = 0;
+        this.lastSpawnType = 'warrior';
+
+        // Get level config for AI behavior
+        const levelCfg = scene.gameState.levelConfig;
+        this.spawnIntervalStart = levelCfg.aiSpawnInterval.start;
+        this.spawnIntervalMin = levelCfg.aiSpawnInterval.min;
+        this.aiScaleTime = levelCfg.aiScaleTime;
+        this.archerChance = levelCfg.aiArcherChance || 0;
+        this.spawnInterval = this.spawnIntervalStart;
+      }
+
+      update(delta) {
+        this.spawnTimer += delta;
+
+        // Update spawn interval based on time using level config
+        const matchTime = this.scene.gameState.matchTime;
+        this.spawnInterval = Phaser.Math.Linear(
+          this.spawnIntervalStart,
+          this.spawnIntervalMin,
+          Math.min(matchTime / this.aiScaleTime, 1)
+        );
+
+        if (this.spawnTimer >= this.spawnInterval) {
+          this.spawnTimer = 0;
+          this.spawnUnit();
+        }
+
+        // Issue attack-move commands to idle red units - reset waypoints if needed (level-specific)
+        const mapCfg = this.scene.mapConfig;
+        this.scene.gameState.teams.red.units.children.iterate(unit => {
+          if (unit && unit.active && unit.state === 'idle' && !unit.currentTarget && !unit.moveTarget) {
+            // Reset waypoints and start moving again
+            unit.waypointIndex = 0;
+            unit.waypoints = [...mapCfg.pathWaypoints].reverse();
+            unit.waypoints.push({ x: mapCfg.castleBlue.x, y: mapCfg.castleBlue.y });
+            unit.moveTarget = unit.waypoints[0];
+          }
+        });
+      }
+
+      spawnUnit() {
+        let unitType = 'warrior';
+
+        // Use level-based archer chance
+        if (this.archerChance > 0 && Math.random() < this.archerChance) {
+          unitType = 'archer';
+        } else {
+          // Composition logic for warriors
+          const blueArchers = this.scene.gameState.teams.blue.units.children.getArray()
+            .filter(u => u && u.active && u.unitType === 'archer').length;
+          const redMelee = this.scene.gameState.teams.red.units.children.getArray()
+            .filter(u => u && u.active && u.unitType === 'warrior').length;
+
+          // Spawn more warriors if player has many archers
+          if (blueArchers > redMelee + 1 || this.archerChance === 0) {
+            unitType = 'warrior';
+          } else if (this.archerChance > 0) {
+            // Alternate when archers are allowed
+            unitType = this.lastSpawnType === 'warrior' ? 'archer' : 'warrior';
+          }
+        }
+
+        this.lastSpawnType = unitType;
+
+        // Slight Y variation for spawn (using level-specific spawn position)
+        const spawnPos = this.scene.mapConfig.spawnRed;
+        const yOffset = Phaser.Math.Between(-30, 30);
+        this.scene.spawnUnit('red', unitType, spawnPos.x, spawnPos.y + yOffset);
+        this.scene.spawnDustEffect(spawnPos.x, spawnPos.y + yOffset);
+      }
+    }
+
+    // === UI SCENE ===
+    class UIScene extends Phaser.Scene {
+      constructor() {
+        super('UIScene');
+      }
+
+      create() {
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+
+        // Get level config from GameScene
+        const gameScene = this.scene.get('GameScene');
+        this.levelConfig = gameScene.gameState.levelConfig;
+        this.currentLevel = gameScene.gameState.level;
+
+        // Level name display
+        const levelName = this.levelConfig.name || `Level ${this.currentLevel}`;
+        this.add.text(width/2, 8, `Level ${this.currentLevel}: ${levelName}`, {
+          fontSize: '12px',
+          fill: '#AAAAAA'
+        }).setOrigin(0.5);
+
+        // Castle HP bars
+        this.createCastleHPBar('blue', 120, 35);
+        this.createCastleHPBar('red', width - 120, 35);
+
+        // Score display
+        this.scoreText = this.add.text(width/2, 28, 'SCORE: 0', {
+          fontSize: '18px',
+          fill: '#FFFFFF',
+          fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        this.bestText = this.add.text(width/2, 48, 'BEST: 0', {
+          fontSize: '12px',
+          fill: '#F6E27F'
+        }).setOrigin(0.5);
+
+        // Bottom HUD panel
+        const bottomPanelWidth = width - 120;
+        const bottomPanelHeight = 90;
+        const bottomPanelY = height - 45;
+        this.bottomPanelLayout = {
+          x: width / 2,
+          y: bottomPanelY,
+          width: bottomPanelWidth,
+          height: bottomPanelHeight
+        };
+        this.bottomPanel = createNineSlicePanel(
+          this,
+          'ui-wood-table',
+          this.bottomPanelLayout.x,
+          this.bottomPanelLayout.y,
+          this.bottomPanelLayout.width,
+          this.bottomPanelLayout.height,
+          { depth: 0, variant: 'wood' }
+        );
+
+        // Spawn buttons
+        this.createSpawnButtons();
+
+        // Supply and defenders display
+        const infoX = width / 2 - bottomPanelWidth / 2 + 24;
+        this.supplyText = this.add.text(infoX, bottomPanelY - 14, 'Supply: 6/20', {
+          fontSize: '14px',
+          fill: '#FFFFFF'
+        }).setOrigin(0, 0.5);
+
+        this.defendersText = this.add.text(infoX, bottomPanelY + 10, `Defenders: 0/${this.levelConfig.maxDefenders}`, {
+          fontSize: '14px',
+          fill: '#7EC8FF'
+        }).setOrigin(0, 0.5);
+
+        // Controls hint - adjust based on level
+        const archersText = this.levelConfig.allowArchers ? ' | A: Archer' : '';
+        this.add.text(20, height - 22, `W: Warrior${archersText} | P: Pause | M: Map`, {
+          fontSize: '12px',
+          fill: '#AAAAAA'
+        });
+
+        // Listen to game events
+        this.registry.events.on('updateScore', this.updateScore, this);
+        this.registry.events.on('updateSupply', this.updateSupply, this);
+        this.registry.events.on('updateCastleHP', this.updateCastleHP, this);
+        this.registry.events.on('denySpawn', this.showDenyFeedback, this);
+        this.registry.events.on('milestone', this.showMilestone, this);
+        this.registry.events.on('castleLowHP', this.startLowHPPulse, this);
+        this.registry.events.on('updateDefenders', this.updateDefenders, this);
+      }
+
+      createCastleHPBar(team, x, y) {
+        const isBlue = team === 'blue';
+        const color = isBlue ? COLORS.BLUE_PRIMARY : COLORS.RED_PRIMARY;
+
+        const targetWidth = 180;
+        const totalSliceWidth = BIG_BAR_BASE_SPEC.left.w + BIG_BAR_BASE_SPEC.center.w + BIG_BAR_BASE_SPEC.right.w;
+        const scale = targetWidth / totalSliceWidth;
+        const baseDisplayHeight = Math.max(12, Math.round(BIG_BAR_BASE_SPEC.height * scale));
+
+        const leftBracket = Math.max(1, Math.round(BIG_BAR_BASE_SPEC.left.w * scale));
+        const rightBracket = Math.max(1, Math.round(BIG_BAR_BASE_SPEC.right.w * scale));
+        const centerWidth = Math.max(1, targetWidth - leftBracket - rightBracket);
+
+        const trackWidth = centerWidth;
+        const trackHeight = Math.max(10, Math.round(24 * scale));
+        const trackX = x - targetWidth / 2 + leftBracket;
+
+        // Depth order (back to front): trackBg -> base -> fill -> text
+        const depthBase = 100;
+        const trackBg = this.add.rectangle(trackX, y, trackWidth, trackHeight, COLORS.UI_DARK, 0.85)
+          .setDepth(depthBase);
+        trackBg.setOrigin(0, 0.5);
+
+        const baseKey = getOrCreateBigBarBaseTexture(this, targetWidth);
+        const base = this.add.image(x, y, baseKey).setDepth(depthBase + 1);
+        base.setDisplaySize(targetWidth, baseDisplayHeight);
+
+        const fill = this.add.image(trackX, y, 'bar-fill').setDepth(depthBase + 2);
+        fill.setOrigin(0, 0.5);
+        fill.setCrop(0, 20, 64, 24);
+        fill.setDisplaySize(trackWidth, trackHeight);
+        fill.setTintFill(color);
+
+        // Label above frame
+        this.add.text(x, y - baseDisplayHeight / 2 - 8, isBlue ? 'BLUE' : 'RED', {
+          fontSize: '12px',
+          fill: isBlue ? '#7EC8FF' : '#FF8A7A',
+          fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(depthBase + 3);
+
+        // HP text on top of everything
+        const hpText = this.add.text(x, y, '1200', {
+          fontSize: '14px',
+          fill: '#FFFFFF',
+          fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(depthBase + 3);
+
+        if (isBlue) {
+          this.blueHPBar = { base, bg: trackBg, fill, text: hpText, maxWidth: trackWidth };
+        } else {
+          this.redHPBar = { base, bg: trackBg, fill, text: hpText, maxWidth: trackWidth };
+        }
+      }
+
+      createSpawnButtons() {
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+        const allowArchers = this.levelConfig.allowArchers;
+        const btnY = this.bottomPanelLayout ? this.bottomPanelLayout.y + 6 : height - 60;
+        const btnSize = 92;
+        const btnOffset = allowArchers ? 80 : 0;
+
+        // Warrior button (centered if no archers, otherwise offset)
+        const warriorX = width / 2 - btnOffset;
+
+        const createSpawnButton = (x, label, cost, onClick) => {
+          const btn = this.add.image(x, btnY, 'btn-small-square-blue');
+          btn.setDisplaySize(btnSize, btnSize);
+          btn.setInteractive({ useHandCursor: true });
+
+          const labelText = this.add.text(x, btnY - 16, label, {
+            fontSize: '11px',
+            fill: '#FFFFFF',
+            fontStyle: 'bold'
+          }).setOrigin(0.5);
+
+          const costText = this.add.text(x, btnY + 18, `(${cost})`, {
+            fontSize: '13px',
+            fill: '#F6E27F',
+            fontStyle: 'bold'
+          }).setOrigin(0.5);
+
+          btn.on('pointerdown', () => {
+            btn.setTexture('btn-small-square-blue-pressed');
+            onClick();
+          });
+          btn.on('pointerup', () => btn.setTexture('btn-small-square-blue'));
+          btn.on('pointerover', () => btn.setTint(0xDDEEFF));
+          btn.on('pointerout', () => {
+            btn.clearTint();
+            btn.setTexture('btn-small-square-blue');
+          });
+
+          return { btn, labelText, costText };
+        };
+
+        this.warriorBtn = createSpawnButton(warriorX, 'WARRIOR', 3, () => {
+          this.scene.get('GameScene').trySpawnUnit('warrior');
+        });
+
+        // Archer button (only if allowed)
+        if (allowArchers) {
+          const archerX = width / 2 + btnOffset;
+          this.archerBtn = createSpawnButton(archerX, 'ARCHER', 4, () => {
+            this.scene.get('GameScene').trySpawnUnit('archer');
+          });
+        }
+      }
+
+      updateScore(score, highScore) {
+        this.scoreText.setText(`SCORE: ${score}`);
+        this.bestText.setText(`BEST: ${highScore}`);
+
+        if (score > 0 && score === highScore) {
+          this.bestText.setFill('#F6E27F');
+        }
+      }
+
+      updateSupply(supply, max) {
+        this.supplyText.setText(`Supply: ${supply}/${max}`);
+
+        // Pulse when full
+        if (supply === max) {
+          this.tweens.add({
+            targets: this.supplyText,
+            scale: { from: 1, to: 1.1 },
+            duration: 400,
+            yoyo: true,
+            ease: 'Sine.easeInOut'
+          });
+        }
+      }
+
+      updateDefenders(count, max) {
+        this.defendersText.setText(`Defenders: ${count}/${max}`);
+
+        // Change color when at max
+        if (count >= max) {
+          this.defendersText.setFill('#FF8A7A');
+        } else {
+          this.defendersText.setFill('#7EC8FF');
+        }
+      }
+
+      updateCastleHP(team, hp, maxHp) {
+        const bar = team === 'blue' ? this.blueHPBar : this.redHPBar;
+        if (!bar || !bar.fill) return;
+
+        const percent = maxHp > 0 ? hp / maxHp : 0;
+        const clamped = Phaser.Math.Clamp(percent, 0, 1);
+        bar.fill.displayWidth = bar.maxWidth * clamped;
+        bar.text.setText(hp.toString());
+      }
+
+      showDenyFeedback() {
+        // Shake supply text
+        this.tweens.add({
+          targets: this.supplyText,
+          x: { from: this.supplyText.x - 6, to: this.supplyText.x + 6 },
+          duration: 45,
+          yoyo: true,
+          repeat: 3
+        });
+
+        // Flash supply text
+        this.supplyText.setFill('#FF8A7A');
+        this.time.delayedCall(180, () => {
+          this.supplyText.setFill('#FFFFFF');
+        });
+      }
+
+      showMilestone() {
+        const width = this.cameras.main.width;
+
+        const bannerArt = this.add.image(width/2, 100, 'banner');
+        bannerArt.setScale(0.28);
+        bannerArt.setAlpha(0);
+
+        const bannerText = this.add.text(width/2, 100, 'Milestone +250!', {
+          fontSize: '32px',
+          fill: '#F6E27F',
+          fontStyle: 'bold',
+          stroke: '#1B1F2A',
+          strokeThickness: 3
+        }).setOrigin(0.5).setAlpha(0);
+
+        this.tweens.add({
+          targets: [bannerArt, bannerText],
+          alpha: 1,
+          duration: 220
+        });
+
+        this.time.delayedCall(620, () => {
+          this.tweens.add({
+            targets: [bannerArt, bannerText],
+            alpha: 0,
+            duration: 220,
+            onComplete: () => {
+              bannerArt.destroy();
+              bannerText.destroy();
+            }
+          });
+        });
+
+        // Confetti
+        for (let i = 0; i < 12; i++) {
+          const colors = [COLORS.BLUE_PRIMARY, COLORS.RED_PRIMARY, COLORS.HIGHLIGHT, COLORS.BLUE_ACCENT];
+          const rect = this.add.rectangle(
+            width/2 + Phaser.Math.Between(-20, 20),
+            80,
+            8, 8,
+            Phaser.Utils.Array.GetRandom(colors)
+          );
+
+          this.tweens.add({
+            targets: rect,
+            x: rect.x + Phaser.Math.Between(-60, 60),
+            y: rect.y + Phaser.Math.Between(40, 80),
+            rotation: Phaser.Math.DegToRad(Phaser.Math.Between(-180, 180)),
+            alpha: 0,
+            duration: 600,
+            onComplete: () => rect.destroy()
+          });
+        }
+      }
+
+      startLowHPPulse(team) {
+        const bar = team === 'blue' ? this.blueHPBar : this.redHPBar;
+        if (!bar || bar.pulsing) return;
+
+        bar.pulsing = true;
+        this.tweens.add({
+          targets: bar.fill,
+          scaleY: { from: 1, to: 1.06 },
+          duration: 400,
+          yoyo: true,
+          repeat: -1
+        });
+      }
+    }
+
+    // === PAUSE SCENE ===
+    class PauseScene extends Phaser.Scene {
+      constructor() {
+        super('PauseScene');
+      }
+
+      create() {
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+
+        // Dark overlay
+        this.add.rectangle(width/2, height/2, width, height, 0x000000, 0.6);
+
+        // Panel background - UI asset
+        createNineSlicePanel(this, 'ui-paper-special', width/2, height/2, 320, 220, {
+          depth: 1,
+          alpha: 0.95
+        });
+
+        // PAUSED text
+        this.add.text(width/2, height/2 - 40, 'PAUSED', {
+          fontSize: '42px',
+          fill: '#F6E27F',
+          fontStyle: 'bold',
+          stroke: '#1B1F2A',
+          strokeThickness: 2
+        }).setOrigin(0.5);
+
+        // Controls reminder
+        this.add.text(width/2, height/2 + 10, 'Press P / ESC to resume', {
+          fontSize: '14px',
+          fill: '#CCCCCC'
+        }).setOrigin(0.5);
+
+        // Resume button
+        const resumeBtnBg = this.add.image(width/2, height/2 + 60, 'btn-small-round-blue');
+        resumeBtnBg.setScale(0.6);
+        resumeBtnBg.setInteractive({ useHandCursor: true });
+
+        const resumeBtnText = this.add.text(width/2, height/2 + 58, '▶', {
+          fontSize: '22px',
+          fill: '#FFFFFF',
+          fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        resumeBtnBg.on('pointerdown', () => {
+          resumeBtnBg.setTexture('btn-small-round-blue-pressed');
+          this.time.delayedCall(100, () => this.resume());
+        });
+        resumeBtnBg.on('pointerover', () => resumeBtnBg.setTint(0xCCCCCC));
+        resumeBtnBg.on('pointerout', () => {
+          resumeBtnBg.clearTint();
+          resumeBtnBg.setTexture('btn-small-round-blue');
+        });
+
+        // Resume on key press
+        this.input.keyboard.on('keydown-P', this.resume, this);
+        this.input.keyboard.on('keydown-ESC', this.resume, this);
+      }
+
+      resume() {
+        const gameScene = this.scene.get('GameScene');
+        gameScene.gameState.isPaused = false;
+        this.scene.resume('GameScene');
+        this.scene.stop();
+      }
+    }
+
+    // === GAME OVER SCENE ===
+    class GameOverScene extends Phaser.Scene {
+      constructor() {
+        super('GameOverScene');
+      }
+
+      init(data) {
+        this.victory = data.victory;
+        this.finalScore = data.score;
+        this.highScore = data.highScore;
+        this.currentLevel = data.level || 1;
+        this.unlockedNext = false;
+
+        // Unlock next level on victory
+        if (this.victory) {
+          const nextLevel = this.currentLevel + 1;
+          if (LEVELS[nextLevel] && !LEVELS[nextLevel].unlocked) {
+            LEVELS[nextLevel].unlocked = true;
+            this.unlockedNext = true;
+            saveProgress();
+          }
+        }
+      }
+
+      create() {
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+
+        // Dark overlay
+        this.add.rectangle(width/2, height/2, width, height, 0x000000, 0.7);
+
+        // Panel background - UI asset
+        const panelDepth = 10;
+        createNineSlicePanel(this, 'ui-paper-special', width/2, height/2, 360, 360, {
+          depth: panelDepth,
+          alpha: 0.95
+        });
+
+        // Content depth - above panel
+        const contentDepth = panelDepth + 1;
+
+        // Result text
+        const levelName = LEVELS[this.currentLevel]?.name || `Level ${this.currentLevel}`;
+        const resultText = this.victory ? 'VICTORY!' : 'DEFEAT';
+        const resultColor = this.victory ? '#7EC87E' : '#E88A7A';
+
+        // Level name
+        this.add.text(width/2, height/2 - 130, levelName, {
+          fontSize: '16px',
+          fill: '#999999'
+        }).setOrigin(0.5).setDepth(contentDepth);
+
+        const title = this.add.text(width/2, height/2 - 85, resultText, {
+          fontSize: '48px',
+          fill: resultColor,
+          fontStyle: 'bold',
+          stroke: '#1B1F2A',
+          strokeThickness: 3
+        }).setOrigin(0.5).setDepth(contentDepth);
+
+        // Zoom pulse
+        this.tweens.add({
+          targets: title,
+          scale: { from: 1, to: 1.03 },
+          duration: 260,
+          yoyo: true,
+          repeat: -1
+        });
+
+        // Unlock notification
+        let scoreY = height/2 - 20;
+        if (this.unlockedNext) {
+          const nextLevelName = LEVELS[this.currentLevel + 1]?.name || `Level ${this.currentLevel + 1}`;
+          this.add.text(width/2, height/2 - 35, `${nextLevelName} Unlocked!`, {
+            fontSize: '16px',
+            fill: '#7EC87E',
+            fontStyle: 'bold'
+          }).setOrigin(0.5).setDepth(contentDepth);
+          scoreY = height/2 + 5;
+        }
+
+        // Score
+        this.add.text(width/2, scoreY, `Score: ${this.finalScore}`, {
+          fontSize: '24px',
+          fill: '#F6E27F',
+          fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(contentDepth);
+
+        // High score
+        const isNewBest = this.finalScore >= this.highScore && this.finalScore > 0;
+        this.add.text(width/2, scoreY + 35, `Best: ${this.highScore}${isNewBest ? ' - NEW!' : ''}`, {
+          fontSize: '16px',
+          fill: isNewBest ? '#7EC87E' : '#999999'
+        }).setOrigin(0.5).setDepth(contentDepth);
+
+        // Button options using asset buttons
+        const btnY = height/2 + 100;
+
+        // Retry button (blue round button)
+        const retryBtnBg = this.add.image(width/2 - 70, btnY, 'btn-small-round-blue');
+        retryBtnBg.setScale(0.75);
+        retryBtnBg.setDepth(contentDepth);
+        retryBtnBg.setInteractive({ useHandCursor: true });
+        this.add.text(width/2 - 70, btnY - 2, '↻', {
+          fontSize: '28px',
+          fill: '#FFFFFF',
+          fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(contentDepth + 1);
+
+        retryBtnBg.on('pointerdown', () => {
+          retryBtnBg.setTexture('btn-small-round-blue-pressed');
+          this.time.delayedCall(100, () => this.retry());
+        });
+        retryBtnBg.on('pointerover', () => retryBtnBg.setTint(0xCCCCCC));
+        retryBtnBg.on('pointerout', () => {
+          retryBtnBg.clearTint();
+          retryBtnBg.setTexture('btn-small-round-blue');
+        });
+
+        // Next Level / World Map button
+        if (this.victory && LEVELS[this.currentLevel + 1]) {
+          const nextBtnBg = this.add.image(width/2 + 70, btnY, 'btn-small-round-blue');
+          nextBtnBg.setScale(0.75);
+          nextBtnBg.setDepth(contentDepth);
+          nextBtnBg.setInteractive({ useHandCursor: true });
+          this.add.text(width/2 + 70, btnY - 2, '▶', {
+            fontSize: '28px',
+            fill: '#FFFFFF',
+            fontStyle: 'bold'
+          }).setOrigin(0.5).setDepth(contentDepth + 1);
+
+          nextBtnBg.on('pointerdown', () => {
+            nextBtnBg.setTexture('btn-small-round-blue-pressed');
+            this.time.delayedCall(100, () => this.nextLevel());
+          });
+          nextBtnBg.on('pointerover', () => nextBtnBg.setTint(0xCCCCCC));
+          nextBtnBg.on('pointerout', () => {
+            nextBtnBg.clearTint();
+            nextBtnBg.setTexture('btn-small-round-blue');
+          });
+        } else {
+          const mapBtnBg = this.add.image(width/2 + 70, btnY, 'btn-small-round-blue');
+          mapBtnBg.setScale(0.75);
+          mapBtnBg.setDepth(contentDepth);
+          mapBtnBg.setInteractive({ useHandCursor: true });
+          this.add.text(width/2 + 70, btnY - 2, '⌂', {
+            fontSize: '24px',
+            fill: '#FFFFFF',
+            fontStyle: 'bold'
+          }).setOrigin(0.5).setDepth(contentDepth + 1);
+
+          mapBtnBg.on('pointerdown', () => {
+            mapBtnBg.setTexture('btn-small-round-blue-pressed');
+            this.time.delayedCall(100, () => this.goToMap());
+          });
+          mapBtnBg.on('pointerover', () => mapBtnBg.setTint(0xCCCCCC));
+          mapBtnBg.on('pointerout', () => {
+            mapBtnBg.clearTint();
+            mapBtnBg.setTexture('btn-small-round-blue');
+          });
+        }
+
+        // Button labels below
+        this.add.text(width/2 - 70, btnY + 42, 'RETRY', {
+          fontSize: '11px',
+          fill: '#CCCCCC',
+          fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(contentDepth);
+
+        const rightBtnLabel = (this.victory && LEVELS[this.currentLevel + 1]) ? 'NEXT' : 'MAP';
+        this.add.text(width/2 + 70, btnY + 42, rightBtnLabel, {
+          fontSize: '11px',
+          fill: '#CCCCCC',
+          fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(contentDepth);
+
+        // Input
+        this.input.keyboard.on('keydown-ENTER', () => this.retry());
+        this.input.keyboard.on('keydown-SPACE', () => this.retry());
+        this.input.keyboard.on('keydown-M', () => this.goToMap());
+        this.input.keyboard.on('keydown-N', () => {
+          if (this.victory && LEVELS[this.currentLevel + 1]) this.nextLevel();
+        });
+      }
+
+      retry() {
+        startLevelWithOptionalIntro(this, this.currentLevel);
+      }
+
+      nextLevel() {
+        startLevelWithOptionalIntro(this, this.currentLevel + 1);
+      }
+
+      goToMap() {
+        this.scene.start('WorldMapScene');
+      }
+    }
+
+    // === GAME CONFIG ===
+    const config = {
+      type: Phaser.AUTO,
+      width: 960,
+      height: 540,
+      parent: 'game-container',
+      backgroundColor: '#7FAE5E',
+      scale: {
+        mode: Phaser.Scale.FIT,
+        autoCenter: Phaser.Scale.CENTER_BOTH
+      },
+      physics: {
+        default: 'arcade',
+        arcade: {
+          gravity: { y: 0 },
+          debug: false
+        }
+      },
+      scene: [BootScene, UITestScene, MenuScene, WorldMapScene, LevelIntroScene, GameScene, UIScene, PauseScene, GameOverScene],
+      input: {
+        activePointers: 2
+      }
+    };
+
+    // === START ===
+    window.game = new Phaser.Game(config);
+  </script>
+</body>
+</html>

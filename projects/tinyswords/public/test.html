@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <link rel="icon" href="data:,">
+  <title>UI Test Scene - Castle Clash Duel</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #1B1F2A;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    #game-container {
+      max-width: 100vw;
+      max-height: 100vh;
+    }
+    canvas {
+      display: block;
+    }
+    .back-link {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      color: #F6E27F;
+      text-decoration: none;
+      font-family: sans-serif;
+      font-size: 14px;
+      background: rgba(0,0,0,0.5);
+      padding: 8px 12px;
+      border-radius: 4px;
+      z-index: 1000;
+    }
+    .back-link:hover {
+      background: rgba(0,0,0,0.7);
+    }
+  </style>
+</head>
+<body>
+  <a href="index.html" class="back-link">&larr; Back to Game</a>
+  <div id="game-container"></div>
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
+  <script>
+    const ASSET_BASE = 'assets/tinyswords/';
+
+    // === BOOT SCENE ===
+    class BootScene extends Phaser.Scene {
+      constructor() {
+        super('BootScene');
+      }
+
+      preload() {
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+        const loadingText = this.add.text(width / 2, height / 2, 'Loading UI Assets...', {
+          fontSize: '24px',
+          fill: '#F6E27F'
+        }).setOrigin(0.5);
+
+        // Load as spritesheets to access individual frames
+        this.load.spritesheet('ui-paper-regular-frames', ASSET_BASE + 'UI Elements/UI Elements/Papers/RegularPaper.png', {
+          frameWidth: 106, frameHeight: 106
+        });
+        this.load.spritesheet('ui-paper-special-frames', ASSET_BASE + 'UI Elements/UI Elements/Papers/SpecialPaper.png', {
+          frameWidth: 106, frameHeight: 106
+        });
+        this.load.spritesheet('ui-wood-table-frames', ASSET_BASE + 'UI Elements/UI Elements/Wood Table/WoodTable.png', {
+          frameWidth: 144, frameHeight: 144, spacing: 8
+        });
+        this.load.image('ribbons-small', ASSET_BASE + 'UI Elements/UI Elements/Ribbons/SmallRibbons.png');
+        this.load.image('bar-base', ASSET_BASE + 'UI Elements/UI Elements/Bars/BigBar_Base.png');
+        this.load.image('bar-fill', ASSET_BASE + 'UI Elements/UI Elements/Bars/BigBar_Fill.png');
+
+        this.load.on('complete', () => {
+          loadingText.destroy();
+        });
+      }
+
+      create() {
+        this.scene.start('UITestScene');
+      }
+    }
+
+    // === UI TEST SCENE ===
+    class UITestScene extends Phaser.Scene {
+      constructor() {
+        super('UITestScene');
+      }
+
+      create() {
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+
+        // Create stitched nine-slice textures from the separate frames
+        // Store the effective slice sizes returned by createStitchedTexture
+        this.paperSliceSize = this.createStitchedTexture('ui-paper-regular-frames', 'ui-paper-regular-stitched', 106);
+        this.paperSpecialSliceSize = this.createStitchedTexture('ui-paper-special-frames', 'ui-paper-special-stitched', 106);
+        this.woodSliceSize = this.createStitchedTexture('ui-wood-table-frames', 'ui-wood-table-stitched', 144);
+
+        // Dark background
+        this.add.rectangle(width/2, height/2, width, height, 0x333333);
+
+        // Title
+        this.add.text(width/2, 30, 'UI ELEMENT TEST - Press 1-6 to switch', {
+          fontSize: '20px',
+          fill: '#FFFFFF'
+        }).setOrigin(0.5);
+
+        this.testLabels = [
+          'Raw Spritesheet Frames',
+          'Paper Regular Panel',
+          'Paper Special Panel',
+          'Wood Table Panel',
+          'Ribbons (SmallRibbons)',
+          'Health Bars (BigBar)'
+        ];
+
+        // Current test index
+        this.currentTest = 0;
+        this.testContainer = this.add.container(0, 0);
+
+        // Show first test
+        this.showTest(0);
+
+        // Keyboard controls
+        this.input.keyboard.on('keydown-ONE', () => this.showTest(0));
+        this.input.keyboard.on('keydown-TWO', () => this.showTest(1));
+        this.input.keyboard.on('keydown-THREE', () => this.showTest(2));
+        this.input.keyboard.on('keydown-FOUR', () => this.showTest(3));
+        this.input.keyboard.on('keydown-FIVE', () => this.showTest(4));
+        this.input.keyboard.on('keydown-SIX', () => this.showTest(5));
+
+        // Test seam for automated testing
+        const scene = this;
+        window.__TEST__ = {
+          ready: true,
+          sceneKey: 'UITestScene',
+          state: () => ({
+            currentTest: scene.currentTest,
+            testLabels: scene.testLabels.slice(),
+            currentLabel: scene.testLabels[scene.currentTest] || ''
+          }),
+          commands: {
+            showTest: (n) => scene.showTest(n),
+            reset: () => scene.showTest(0)
+          }
+        };
+      }
+
+      // Papers are 320x320 images with a 3x3 grid. Each cell is 106x106, with the art
+      // centered and lots of transparent padding. Trim to the effective content so
+      // the side edges don't show as thick "bars" inside panels.
+      getTrimSpec(spriteKey) {
+        if (spriteKey.includes('wood')) {
+          // Wood table: 448x448 with 144x144 frames and 8px spacing
+          // Trim each row/col to the effective content bounds to avoid padded-frame artifacts
+          return {
+            tileSize: 144,
+            gap: 8,
+            cols: [
+              { x: 44, w: 84 }, // left
+              { x: 40, w: 64 }, // center
+              { x: 16, w: 84 }  // right
+            ],
+            rows: [
+              { y: 43, h: 85 },  // top
+              { y: 40, h: 64 },  // middle
+              { y: 16, h: 103 }  // bottom
+            ]
+          };
+        }
+
+        if (spriteKey.includes('special')) {
+          return {
+            tileSize: 106,
+            gap: 0,
+            cols: [
+              { x: 10, w: 54 }, // left
+              { x: 22, w: 64 }, // center
+              { x: 44, w: 54 }  // right
+            ],
+            rows: [
+              { y: 20, h: 44 }, // top
+              { y: 22, h: 64 }, // middle
+              { y: 44, h: 43 }  // bottom
+            ]
+          };
+        }
+
+        // Regular paper
+        return {
+          tileSize: 106,
+          gap: 0,
+          cols: [
+            // Reduced width to exclude interior fill while keeping border
+            { x: 10, w: 38 }, // left - border with minimal fill
+            { x: 24, w: 58 }, // center - main fill area
+            { x: 58, w: 38 }  // right - border with minimal fill
+          ],
+          rows: [
+            { y: 18, h: 48 }, // top
+            { y: 24, h: 58 }, // middle
+            { y: 40, h: 48 }  // bottom
+          ]
+        };
+      }
+
+      getOrCreateNineSliceTextureTrimmed(textureKey, width, height, spec) {
+        const texKey = `nineslice_trimmed_${textureKey}_${width}x${height}`;
+        if (this.textures.exists(texKey)) return texKey;
+
+        const texture = this.textures.get(textureKey);
+        const source = texture.getSourceImage();
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+
+        const srcTopH = spec.rows[0].h;
+        const srcMidH = spec.rows[1].h;
+        const srcBottomH = spec.rows[2].h;
+        const srcTotalH = srcTopH + srcMidH + srcBottomH;
+
+        const scaleY = height / srcTotalH;
+        const leftW = Math.max(1, Math.round(spec.cols[0].w * scaleY));
+        const rightW = Math.max(1, Math.round(spec.cols[2].w * scaleY));
+        const topH = Math.max(1, Math.round(srcTopH * scaleY));
+        const bottomH = Math.max(1, Math.round(srcBottomH * scaleY));
+
+        const centerW = Math.max(1, width - leftW - rightW);
+        const centerH = Math.max(1, height - topH - bottomH);
+
+        const x0 = 0;
+        const x1 = leftW;
+        const x2 = leftW + centerW;
+        const y0 = 0;
+        const y1 = topH;
+        const y2 = topH + centerH;
+
+        function drawPiece(row, col, dx, dy, dw, dh) {
+          const tileX = col * (spec.tileSize + spec.gap);
+          const tileY = row * (spec.tileSize + spec.gap);
+          const cropCol = spec.cols[col];
+          const cropRow = spec.rows[row];
+          const sx = tileX + cropCol.x;
+          const sy = tileY + cropRow.y;
+          ctx.drawImage(source, sx, sy, cropCol.w, cropRow.h, dx, dy, dw, dh);
+        }
+
+        const seam = 1;
+
+        // Center
+        drawPiece(1, 1, x1 - seam, y1 - seam, centerW + seam * 2, centerH + seam * 2);
+
+        // Edges
+        drawPiece(0, 1, x1 - seam, y0, centerW + seam * 2, topH + seam);
+        drawPiece(2, 1, x1 - seam, y2 - seam, centerW + seam * 2, bottomH + seam);
+        drawPiece(1, 0, x0, y1 - seam, leftW + seam, centerH + seam * 2);
+        drawPiece(1, 2, x2 - seam, y1 - seam, rightW + seam, centerH + seam * 2);
+
+        // Corners (draw last on top)
+        drawPiece(0, 0, x0, y0, leftW + seam, topH + seam);
+        drawPiece(0, 2, x2 - seam, y0, rightW + seam, topH + seam);
+        drawPiece(2, 0, x0, y2 - seam, leftW + seam, bottomH + seam);
+        drawPiece(2, 2, x2 - seam, y2 - seam, rightW + seam, bottomH + seam);
+
+        this.textures.addCanvas(texKey, canvas);
+        return texKey;
+      }
+
+      /**
+       * Stitch 9 separate frames into a connected nine-slice texture
+       * Takes a 3x3 spritesheet with gaps and creates a seamless texture
+       * Uses overlap to hide transparent edges in the source frames
+       */
+      createStitchedTexture(sourceKey, targetKey, frameSize, overlap = 0) {
+        // Calculate overlap based on frame size - the frames have ~45% transparent edges
+        const effectiveOverlap = overlap || Math.floor(frameSize * 0.45);
+
+        // Calculate effective cell size (frame size minus overlap)
+        const cellSize = frameSize - effectiveOverlap;
+
+        // Total size is 3 cells plus one full frame for the last row/col
+        const totalSize = cellSize * 2 + frameSize;
+
+        const rt = this.add.renderTexture(0, 0, totalSize, totalSize);
+
+        // Draw each of the 9 frames with overlap
+        for (let row = 0; row < 3; row++) {
+          for (let col = 0; col < 3; col++) {
+            const frameIndex = row * 3 + col;
+            // Position with overlap - each subsequent frame overlaps the previous
+            const x = col * cellSize + frameSize / 2;
+            const y = row * cellSize + frameSize / 2;
+
+            // Create temporary sprite for this frame
+            const tempSprite = this.add.sprite(0, 0, sourceKey, frameIndex);
+            rt.draw(tempSprite, x, y);
+            tempSprite.destroy();
+          }
+        }
+
+        // Save the render texture as a new texture in the texture manager
+        rt.saveTexture(targetKey);
+        rt.destroy();
+
+        // Return the effective slice size for nine-slice usage
+        return cellSize;
+      }
+
+      showTest(index) {
+        const max = (this.testLabels?.length || 1) - 1;
+        this.currentTest = Phaser.Math.Clamp(index, 0, Math.max(0, max));
+        this.testContainer.removeAll(true);
+
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+
+        // Test label
+        const labelText = `${this.currentTest + 1}: ${this.testLabels[this.currentTest] || ''}`;
+        const label = this.add.text(width/2, 70, labelText, {
+          fontSize: '16px',
+          fill: '#F6E27F'
+        }).setOrigin(0.5);
+        this.testContainer.add(label);
+
+        switch(this.currentTest) {
+          case 0:
+            this.showRawFrames();
+            break;
+          case 1:
+            this.showNineSlicePanel('ui-paper-regular', 106, 400, 200);
+            break;
+          case 2:
+            this.showNineSlicePanel('ui-paper-special', 106, 400, 200);
+            break;
+          case 3:
+            this.showNineSlicePanel('ui-wood-table', 144, 400, 250);
+            break;
+          case 4:
+            this.showRibbons();
+            break;
+          case 5:
+            this.showHealthBars();
+            break;
+        }
+      }
+
+      showRawFrames() {
+        const width = this.cameras.main.width;
+
+        // Show all 9 frames of ui-paper-regular
+        const label1 = this.add.text(width/4, 110, 'ui-paper-regular frames:', {
+          fontSize: '14px', fill: '#FFFFFF'
+        });
+        this.testContainer.add(label1);
+
+        for (let i = 0; i < 9; i++) {
+          const row = Math.floor(i / 3);
+          const col = i % 3;
+          const x = width/4 - 80 + col * 90;
+          const y = 180 + row * 90;
+
+          const frame = this.add.image(x, y, 'ui-paper-regular-frames', i);
+          this.testContainer.add(frame);
+
+          const num = this.add.text(x, y + 50, `${i}`, {
+            fontSize: '12px', fill: '#888888'
+          }).setOrigin(0.5);
+          this.testContainer.add(num);
+        }
+
+        // Show all 9 frames of ui-wood-table
+        const label2 = this.add.text(width * 3/4 - 100, 110, 'ui-wood-table frames:', {
+          fontSize: '14px', fill: '#FFFFFF'
+        });
+        this.testContainer.add(label2);
+
+        for (let i = 0; i < 9; i++) {
+          const row = Math.floor(i / 3);
+          const col = i % 3;
+          const x = width * 3/4 - 100 + col * 100;
+          const y = 180 + row * 100;
+
+          const frame = this.add.image(x, y, 'ui-wood-table-frames', i);
+          frame.setScale(0.7);
+          this.testContainer.add(frame);
+
+          const num = this.add.text(x, y + 60, `${i}`, {
+            fontSize: '12px', fill: '#888888'
+          }).setOrigin(0.5);
+          this.testContainer.add(num);
+        }
+      }
+
+      /**
+       * Manually assemble panel from 9 separate frame sprites
+       * Paper: Content centered in frames, need overlap to hide transparent edges
+       * Wood: Corner fixtures at outer edges, need different positioning
+       */
+      showNineSlicePanel(spriteKey, frameSize, panelWidth, panelHeight) {
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+        const centerX = width / 2;
+        const centerY = height / 2 + 50;
+
+        const framesKey = spriteKey + '-frames';
+        const isWood = spriteKey.includes('wood');
+        const isSpecial = spriteKey.includes('special');
+
+        const spec = this.getTrimSpec(spriteKey);
+        const texKey = this.getOrCreateNineSliceTextureTrimmed(framesKey, panelWidth, panelHeight, spec);
+        const panel = this.add.image(centerX, centerY, texKey);
+        this.testContainer.add(panel);
+
+        const textColor = isWood ? '#FFFFFF' : (isSpecial ? '#F6E27F' : '#333333');
+        const testText = this.add.text(centerX, centerY, 'Panel Content Here', {
+          fontSize: '20px',
+          fill: textColor
+        }).setOrigin(0.5);
+        this.testContainer.add(testText);
+      }
+
+      showRibbons() {
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+        const centerX = width / 2;
+
+        const rowCount = 10;
+        const frameW = 320;
+        const frameH = 64;
+
+        // Match the world map tooltip ribbon sizing (see index.html usage)
+        const displayW = 228;
+        const displayH = 36;
+        const listTopY = 130;
+        const listRowH = 38;
+        const colGap = 60;
+        const rawX = centerX - (displayW / 2 + colGap / 2);
+        const stitchedX = centerX + (displayW / 2 + colGap / 2);
+
+        const hint = this.add.text(centerX, 100, `SmallRibbons.png rows (crop 0,y,320,64) → display ${displayW}×${displayH}`, {
+          fontSize: '12px',
+          fill: '#CCCCCC'
+        }).setOrigin(0.5);
+        this.testContainer.add(hint);
+
+        // Light backdrop so semi-transparent ribbon fills are easy to see (matches in-game usage over paper).
+        const listBottomY = listTopY + (rowCount - 1) * listRowH;
+        const listCenterY = (listTopY + listBottomY) / 2;
+        const listBg = this.add.rectangle(centerX, listCenterY, displayW * 2 + colGap + 160, (listBottomY - listTopY) + 86, 0xF5E6C8, 1);
+        listBg.setAlpha(0.85);
+        this.testContainer.add(listBg);
+
+        const rawHeader = this.add.text(rawX, listTopY - 28, 'Raw', {
+          fontSize: '12px',
+          fill: '#333333',
+          fontStyle: 'bold'
+        }).setOrigin(0.5);
+        this.testContainer.add(rawHeader);
+
+        const stitchedHeader = this.add.text(stitchedX, listTopY - 28, 'Stitched 3-slice', {
+          fontSize: '12px',
+          fill: '#333333',
+          fontStyle: 'bold'
+        }).setOrigin(0.5);
+        this.testContainer.add(stitchedHeader);
+
+        const getOrCreateStitchedRibbonKey = (row) => {
+          const texKey = `ribbon_small_stitched_${row}_${displayW}x${displayH}`;
+          if (this.textures.exists(texKey)) return texKey;
+
+          const source = this.textures.get('ribbons-small').getSourceImage();
+
+          const canvas = document.createElement('canvas');
+          canvas.width = displayW;
+          canvas.height = displayH;
+          const ctx = canvas.getContext('2d');
+          ctx.imageSmoothingEnabled = false;
+
+          const scaleY = displayH / frameH;
+          let leftW = Math.max(1, Math.round(62 * scaleY));
+          let rightW = Math.max(1, Math.round(62 * scaleY));
+          let centerW = displayW - leftW - rightW;
+
+          if (centerW < 1) {
+            const available = Math.max(1, displayW - 1);
+            const totalCaps = leftW + rightW;
+            const capScale = totalCaps > 0 ? (available / totalCaps) : 1;
+            leftW = Math.max(1, Math.floor(leftW * capScale));
+            rightW = Math.max(1, available - leftW);
+            centerW = 1;
+          }
+
+          const sy = row * frameH;
+          const seam = 1;
+
+          // Left cap (x=2..63)
+          ctx.drawImage(source, 2, sy, 62, frameH, 0, 0, Math.min(displayW, leftW + seam), displayH);
+          // Center stretch (x=128..191)
+          ctx.drawImage(source, 128, sy, 64, frameH, Math.max(0, leftW - seam), 0, Math.min(displayW, centerW + seam * 2), displayH);
+          // Right cap (x=256..317)
+          ctx.drawImage(source, 256, sy, 62, frameH, Math.max(0, leftW + centerW - seam), 0, Math.min(displayW, rightW + seam), displayH);
+
+          this.textures.addCanvas(texKey, canvas);
+          return texKey;
+        };
+
+        for (let row = 0; row < rowCount; row++) {
+          const y = listTopY + row * listRowH;
+
+          const label = this.add.text(rawX - displayW / 2 - 14, y, `${row}`, {
+            fontSize: '12px',
+            fill: '#F6E27F'
+          }).setOrigin(1, 0.5);
+          this.testContainer.add(label);
+
+          const rawRibbon = this.add.image(rawX, y, 'ribbons-small');
+          rawRibbon.setOrigin(0.5);
+          rawRibbon.setCrop(0, row * frameH, frameW, frameH);
+          rawRibbon.setDisplaySize(displayW, displayH);
+          this.testContainer.add(rawRibbon);
+
+          const stitchedKey = getOrCreateStitchedRibbonKey(row);
+          const stitchedRibbon = this.add.image(stitchedX, y, stitchedKey);
+          stitchedRibbon.setOrigin(0.5);
+          this.testContainer.add(stitchedRibbon);
+        }
+      }
+
+      getBigBarBaseTexture(width) {
+        const spec = {
+          left: { x: 40, w: 24 },
+          center: { x: 128, w: 64 },
+          right: { x: 256, w: 24 },
+          top: 9,
+          height: 51
+        };
+      const w = Math.max(1, Math.round(width));
+      this.barBaseCache = this.barBaseCache || {};
+      if (this.barBaseCache[w]) return this.barBaseCache[w];
+
+      const texKey = `bar_base_test_${w}`;
+
+      const totalBaseWidth = spec.left.w + spec.center.w + spec.right.w;
+      const scale = w / totalBaseWidth;
+      const leftW = Math.max(1, Math.round(spec.left.w * scale));
+      const rightW = Math.max(1, Math.round(spec.right.w * scale));
+      const centerW = Math.max(1, w - leftW - rightW);
+
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = spec.height;
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+      const source = this.textures.get('bar-base').getSourceImage();
+
+      ctx.drawImage(source, spec.left.x, spec.top, spec.left.w, spec.height, 0, 0, leftW, spec.height);
+      ctx.drawImage(source, spec.center.x, spec.top, spec.center.w, spec.height, leftW, 0, centerW, spec.height);
+      ctx.drawImage(source, spec.right.x, spec.top, spec.right.w, spec.height, leftW + centerW, 0, rightW, spec.height);
+
+      this.textures.addCanvas(texKey, canvas);
+      const data = { key: texKey, left: leftW, right: rightW, center: centerW, height: spec.height, scale };
+      this.barBaseCache[w] = data;
+      return data;
+    }
+
+      showHealthBars() {
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+        const centerX = width / 2;
+
+        // "World" backdrop to highlight transparency in bar-base.
+        const worldBg = this.add.rectangle(centerX, 255, width - 160, 280, 0x7FAE5E, 1);
+        this.testContainer.add(worldBg);
+
+        const drawComposite = ({ x, y, targetWidth, percent, label, color }) => {
+          const baseData = this.getBigBarBaseTexture(targetWidth);
+          const scale = baseData.scale;
+          const baseDisplayHeight = Math.max(12, Math.round(baseData.height * scale));
+
+          const trackWidth = baseData.center;
+          const trackHeight = Math.max(10, Math.round(24 * scale));
+          const trackX = x - targetWidth / 2 + baseData.left;
+
+          const depthBase = 200;
+          // Layer order (back to front): trackBg -> base -> fill -> text
+          const trackBg = this.add.rectangle(trackX, y, trackWidth, trackHeight, 0x2A2F3A, 0.85)
+            .setDepth(depthBase);
+          trackBg.setOrigin(0, 0.5);
+          this.testContainer.add(trackBg);
+
+          const base = this.add.image(x, y, baseData.key).setDepth(depthBase + 1);
+          base.setDisplaySize(targetWidth, baseDisplayHeight);
+          this.testContainer.add(base);
+
+          const fill = this.add.image(trackX, y, 'bar-fill').setDepth(depthBase + 2);
+          fill.setOrigin(0, 0.5);
+          fill.setCrop(0, 20, 64, 24);
+          fill.setDisplaySize(trackWidth, trackHeight);
+          fill.setTintFill(color);
+          fill.displayWidth = trackWidth * Phaser.Math.Clamp(percent, 0, 1);
+          this.testContainer.add(fill);
+
+          const labelText = this.add.text(x, y - baseDisplayHeight / 2 - 10, label, {
+            fontSize: '12px',
+            fill: '#FFFFFF',
+            fontStyle: 'bold'
+          }).setOrigin(0.5);
+          this.testContainer.add(labelText);
+        };
+
+        const leftX = centerX - 230;
+        const rightX = centerX + 230;
+        const rows = [
+          { pct: 1.0, label: 'Blue 100%', color: 0x2B6DE8 },
+          { pct: 0.55, label: 'Blue 55%', color: 0x2B6DE8 },
+          { pct: 0.12, label: 'Red 12%', color: 0xE23B3B }
+        ];
+
+        const startY = 150;
+        const rowGap = 100;
+
+        rows.forEach((r, i) => {
+          const y = startY + i * rowGap;
+          drawComposite({ x: leftX, y, targetWidth: 180, percent: r.pct, label: `${r.label} (180w)`, color: r.color });
+          drawComposite({ x: rightX, y, targetWidth: 320, percent: r.pct, label: `${r.label} (320w)`, color: r.color });
+        });
+
+        // Fill source diagnostic (shows the crop region used for the bar).
+        const diagX = centerX;
+        const diagY = height - 70;
+        const diagScale = 4;
+
+        const fillSrcLabel = this.add.text(diagX, diagY - 46, 'BigBar_Fill.png (crop y=20..43)', {
+          fontSize: '12px',
+          fill: '#CCCCCC'
+        }).setOrigin(0.5);
+        this.testContainer.add(fillSrcLabel);
+
+        const fillSrc = this.add.image(diagX, diagY, 'bar-fill');
+        fillSrc.setOrigin(0.5);
+        fillSrc.setScale(diagScale);
+        this.testContainer.add(fillSrc);
+
+        const cropOverlay = this.add.rectangle(
+          diagX,
+          diagY + (20 + 12 - 32) * diagScale,
+          64 * diagScale,
+          24 * diagScale
+        );
+        cropOverlay.setStrokeStyle(2, 0xF6E27F, 0.9);
+        this.testContainer.add(cropOverlay);
+      }
+
+      buildNineSlicePanel(textureKey, x, y, panelWidth, panelHeight, options = {}) {
+        const container = this.add.container(x, y);
+
+        const texture = this.textures.get(textureKey);
+        const frameData = texture.frames['0'] || texture.frames[0];
+        const frameW = frameData ? frameData.width : 106;
+        const frameH = frameData ? frameData.height : 106;
+
+        const isWood = options.variant === 'wood' || textureKey.includes('wood');
+        const isSpecial = options.variant === 'special' || textureKey.includes('special');
+
+        const cornerInset = (typeof options.cornerInset === 'number')
+          ? options.cornerInset
+          : (isWood ? frameW * 0.35 : frameW * 0.28);
+        const overlap = (typeof options.overlap === 'number')
+          ? options.overlap
+          : (isWood ? 80 : 55);
+        const bgColor = (typeof options.bgColor === 'number')
+          ? options.bgColor
+          : (isWood ? 0x8B5A2B : (isSpecial ? 0x4A5568 : 0xF5E6C8));
+        const bgAlpha = (typeof options.bgAlpha === 'number') ? options.bgAlpha : 1;
+
+        const bg = this.add.rectangle(0, 0, panelWidth, panelHeight, bgColor, bgAlpha);
+        container.add(bg);
+
+        const left = -panelWidth / 2;
+        const right = panelWidth / 2;
+        const top = -panelHeight / 2;
+        const bottom = panelHeight / 2;
+
+        const center = this.add.image(0, 0, textureKey, 4);
+        center.setDisplaySize(panelWidth + overlap, panelHeight + overlap);
+        container.add(center);
+
+        const topY = top + cornerInset;
+        const bottomY = bottom - cornerInset;
+        const leftX = left + cornerInset;
+        const rightX = right - cornerInset;
+
+        const topEdge = this.add.image(0, topY, textureKey, 1);
+        topEdge.setDisplaySize(panelWidth + overlap, frameH);
+        container.add(topEdge);
+
+        const bottomEdge = this.add.image(0, bottomY, textureKey, 7);
+        bottomEdge.setDisplaySize(panelWidth + overlap, frameH);
+        container.add(bottomEdge);
+
+        const leftEdge = this.add.image(leftX, 0, textureKey, 3);
+        leftEdge.setDisplaySize(frameW, panelHeight + overlap);
+        container.add(leftEdge);
+
+        const rightEdge = this.add.image(rightX, 0, textureKey, 5);
+        rightEdge.setDisplaySize(frameW, panelHeight + overlap);
+        container.add(rightEdge);
+
+        container.add(this.add.image(leftX, topY, textureKey, 0));
+        container.add(this.add.image(rightX, topY, textureKey, 2));
+        container.add(this.add.image(leftX, bottomY, textureKey, 6));
+        container.add(this.add.image(rightX, bottomY, textureKey, 8));
+
+        return container;
+      }
+    }
+
+    // === GAME CONFIG ===
+    const config = {
+      type: Phaser.AUTO,
+      width: 960,
+      height: 540,
+      parent: 'game-container',
+      backgroundColor: '#1B1F2A',
+      scene: [BootScene, UITestScene]
+    };
+
+    // Expose game globally for testing
+    window.game = new Phaser.Game(config);
+  </script>
+</body>
+</html>

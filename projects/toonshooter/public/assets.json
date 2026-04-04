@@ -1,0 +1,92 @@
+{
+  "assets": {
+    "toonshooter": {
+      "characters": {
+        "Character_Enemy": "assets/toonshooter/Characters/glTF/Character_Enemy.gltf",
+        "Character_Hazmat": "assets/toonshooter/Characters/glTF/Character_Hazmat.gltf",
+        "Character_Soldier": "assets/toonshooter/Characters/glTF/Character_Soldier.gltf"
+      },
+      "guns": {
+        "AK": "assets/toonshooter/Guns/glTF/AK.gltf",
+        "FireGrenade": "assets/toonshooter/Guns/glTF/FireGrenade.gltf",
+        "Grenade": "assets/toonshooter/Guns/glTF/Grenade.gltf",
+        "GrenadeLauncher": "assets/toonshooter/Guns/glTF/GrenadeLauncher.gltf",
+        "Knife_1": "assets/toonshooter/Guns/glTF/Knife_1.gltf",
+        "Knife_2": "assets/toonshooter/Guns/glTF/Knife_2.gltf",
+        "Pistol": "assets/toonshooter/Guns/glTF/Pistol.gltf",
+        "Revolver": "assets/toonshooter/Guns/glTF/Revolver.gltf",
+        "Revolver_Small": "assets/toonshooter/Guns/glTF/Revolver_Small.gltf",
+        "RocketLauncher": "assets/toonshooter/Guns/glTF/RocketLauncher.gltf",
+        "SMG": "assets/toonshooter/Guns/glTF/SMG.gltf",
+        "ShortCannon": "assets/toonshooter/Guns/glTF/ShortCannon.gltf",
+        "Shotgun": "assets/toonshooter/Guns/glTF/Shotgun.gltf",
+        "Shovel": "assets/toonshooter/Guns/glTF/Shovel.gltf",
+        "Sniper": "assets/toonshooter/Guns/glTF/Sniper.gltf",
+        "Sniper_2": "assets/toonshooter/Guns/glTF/Sniper_2.gltf"
+      },
+      "environment": {
+        "Barrier_Fixed": "assets/toonshooter/Environment/glTF/Barrier_Fixed.gltf",
+        "Barrier_Large": "assets/toonshooter/Environment/glTF/Barrier_Large.gltf",
+        "Barrier_Single": "assets/toonshooter/Environment/glTF/Barrier_Single.gltf",
+        "Barrier_Trash": "assets/toonshooter/Environment/glTF/Barrier_Trash.gltf",
+        "BearTrap_Closed": "assets/toonshooter/Environment/glTF/BearTrap_Closed.gltf",
+        "BearTrap_Open": "assets/toonshooter/Environment/glTF/BearTrap_Open.gltf",
+        "BrickWall_1": "assets/toonshooter/Environment/glTF/BrickWall_1.gltf",
+        "BrickWall_2": "assets/toonshooter/Environment/glTF/BrickWall_2.gltf",
+        "CardboardBoxes_1": "assets/toonshooter/Environment/glTF/CardboardBoxes_1.gltf",
+        "CardboardBoxes_2": "assets/toonshooter/Environment/glTF/CardboardBoxes_2.gltf",
+        "CardboardBoxes_3": "assets/toonshooter/Environment/glTF/CardboardBoxes_3.gltf",
+        "CardboardBoxes_4": "assets/toonshooter/Environment/glTF/CardboardBoxes_4.gltf",
+        "Container_Long": "assets/toonshooter/Environment/glTF/Container_Long.gltf",
+        "Container_Small": "assets/toonshooter/Environment/glTF/Container_Small.gltf",
+        "Crate": "assets/toonshooter/Environment/glTF/Crate.gltf",
+        "Debris_BrokenCar": "assets/toonshooter/Environment/glTF/Debris_BrokenCar.gltf",
+        "Debris_Papers_1": "assets/toonshooter/Environment/glTF/Debris_Papers_1.gltf",
+        "Debris_Papers_2": "assets/toonshooter/Environment/glTF/Debris_Papers_2.gltf",
+        "Debris_Papers_3": "assets/toonshooter/Environment/glTF/Debris_Papers_3.gltf",
+        "Debris_Pile": "assets/toonshooter/Environment/glTF/Debris_Pile.gltf",
+        "Debris_Tires": "assets/toonshooter/Environment/glTF/Debris_Tires.gltf",
+        "ExplodingBarrel": "assets/toonshooter/Environment/glTF/ExplodingBarrel.gltf",
+        "ExplodingBarrel_Spilled": "assets/toonshooter/Environment/glTF/ExplodingBarrel_Spilled.gltf",
+        "Fence": "assets/toonshooter/Environment/glTF/Fence.gltf",
+        "Fence_Long": "assets/toonshooter/Environment/glTF/Fence_Long.gltf",
+        "GasCan": "assets/toonshooter/Environment/glTF/GasCan.gltf",
+        "GasTank": "assets/toonshooter/Environment/glTF/GasTank.gltf",
+        "Health": "assets/toonshooter/Environment/glTF/Health.gltf",
+        "Key": "assets/toonshooter/Environment/glTF/Key.gltf",
+        "Landmine": "assets/toonshooter/Environment/glTF/Landmine.gltf",
+        "MetalFence": "assets/toonshooter/Environment/glTF/MetalFence.gltf",
+        "Pallet": "assets/toonshooter/Environment/glTF/Pallet.gltf",
+        "Pallet_Broken": "assets/toonshooter/Environment/glTF/Pallet_Broken.gltf",
+        "Pipes": "assets/toonshooter/Environment/glTF/Pipes.gltf",
+        "SackTrench": "assets/toonshooter/Environment/glTF/SackTrench.gltf",
+        "SackTrench_Small": "assets/toonshooter/Environment/glTF/SackTrench_Small.gltf",
+        "Sign": "assets/toonshooter/Environment/glTF/Sign.gltf",
+        "Sofa": "assets/toonshooter/Environment/glTF/Sofa.gltf",
+        "Sofa_Small": "assets/toonshooter/Environment/glTF/Sofa_Small.gltf",
+        "StreetLight": "assets/toonshooter/Environment/glTF/StreetLight.gltf",
+        "Structure_1": "assets/toonshooter/Environment/glTF/Structure_1.gltf",
+        "Structure_2": "assets/toonshooter/Environment/glTF/Structure_2.gltf",
+        "Structure_3": "assets/toonshooter/Environment/glTF/Structure_3.gltf",
+        "Structure_4": "assets/toonshooter/Environment/glTF/Structure_4.gltf",
+        "Tank": "assets/toonshooter/Environment/glTF/Tank.gltf",
+        "TrafficCone": "assets/toonshooter/Environment/glTF/TrafficCone.gltf",
+        "TrashContainer": "assets/toonshooter/Environment/glTF/TrashContainer.gltf",
+        "TrashContainer_Open": "assets/toonshooter/Environment/glTF/TrashContainer_Open.gltf",
+        "Tree_1": "assets/toonshooter/Environment/glTF/Tree_1.gltf",
+        "Tree_2": "assets/toonshooter/Environment/glTF/Tree_2.gltf",
+        "Tree_3": "assets/toonshooter/Environment/glTF/Tree_3.gltf",
+        "Tree_4": "assets/toonshooter/Environment/glTF/Tree_4.gltf",
+        "WaterTank_Floor": "assets/toonshooter/Environment/glTF/WaterTank_Floor.gltf",
+        "WaterTank_Platform": "assets/toonshooter/Environment/glTF/WaterTank_Platform.gltf",
+        "WoodPlanks": "assets/toonshooter/Environment/glTF/WoodPlanks.gltf"
+      }
+    }
+  },
+  "summary": {
+    "total": 74,
+    "categories": {
+      "toonshooter": 74
+    }
+  }
+}

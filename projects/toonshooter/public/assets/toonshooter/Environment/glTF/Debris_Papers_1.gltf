@@ -1,0 +1,116 @@
+{
+    "asset" : {
+        "generator" : "Khronos glTF Blender I/O v1.7.33",
+        "version" : "2.0"
+    },
+    "scene" : 0,
+    "scenes" : [
+        {
+            "name" : "Scene",
+            "nodes" : [
+                0
+            ]
+        }
+    ],
+    "nodes" : [
+        {
+            "mesh" : 0,
+            "name" : "Debris_Papers_1",
+            "rotation" : [
+                0,
+                0.1531962752342224,
+                0,
+                0.9881957769393921
+            ],
+            "scale" : [
+                0.11411241441965103,
+                0.11411242187023163,
+                0.11411241441965103
+            ]
+        }
+    ],
+    "materials" : [
+        {
+            "doubleSided" : true,
+            "name" : "White",
+            "pbrMetallicRoughness" : {
+                "baseColorFactor" : [
+                    0.6421434283256531,
+                    0.6738417744636536,
+                    0.5752183794975281,
+                    1
+                ],
+                "metallicFactor" : 0,
+                "roughnessFactor" : 0.5
+            }
+        }
+    ],
+    "meshes" : [
+        {
+            "name" : "Plane.003",
+            "primitives" : [
+                {
+                    "attributes" : {
+                        "POSITION" : 0,
+                        "NORMAL" : 1
+                    },
+                    "indices" : 2,
+                    "material" : 0
+                }
+            ]
+        }
+    ],
+    "accessors" : [
+        {
+            "bufferView" : 0,
+            "componentType" : 5126,
+            "count" : 24,
+            "max" : [
+                5.147430896759033,
+                0.053457967936992645,
+                3.7750473022460938
+            ],
+            "min" : [
+                -2.966914176940918,
+                0.01187954843044281,
+                -4.9553446769714355
+            ],
+            "type" : "VEC3"
+        },
+        {
+            "bufferView" : 1,
+            "componentType" : 5126,
+            "count" : 24,
+            "type" : "VEC3"
+        },
+        {
+            "bufferView" : 2,
+            "componentType" : 5123,
+            "count" : 36,
+            "type" : "SCALAR"
+        }
+    ],
+    "bufferViews" : [
+        {
+            "buffer" : 0,
+            "byteLength" : 288,
+            "byteOffset" : 0
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 288,
+            "byteOffset" : 288
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 72,
+            "byteOffset" : 576
+        }
+    ],
+    "buffers" : [
+        {
+            "byteLength" : 648,
+            "uri" : "data:application/octet-stream;base64,AACAv3CiQjwAAIA/AACAP3CiQjwAAIA/AACAv3CiQjwAAIC/AACAP3CiQjwAAIC/gm9JQNT5ET1vBxS/wbekQNT5ET1vBxS/gm9JQNT5ET16dQfAwbekQNT5ET16dQfA7OE9wL72Wj0wBzg/9C+wv772Wj39Ovc/c4zgv772Wj2WIF+/eMQnvr72Wj1knK4+J5MkQL8B1TyVV1e/wdpQQL8B1TzqhYQ/VHmAQL8B1Txsya+/IZ2WQL8B1TyR0AA/aVwOwHCiQjxeJD3AkMZlvnCiQjxeJD3AaVwOwHCiQjwvkp7AkMZlvnCiQjwvkp7AqIkEP772Wj2u/iNAXOwGQL72Wj1gmnFAOXzdP772Wj3y0ng/DohUQL72Wj1u0AtAAAAAAAAAgD8AAACAAAAAAAAAgD8AAACAAAAAAAAAgD8AAACAAAAAAAAAgD8AAACAAAAAAAAAgD8AAACAAAAAAAAAgD8AAACAAAAAAAAAgD8AAACAAAAAAAAAgD8AAACAAAAAsQAAgD8AAACAAAAAsQAAgD8AAACAAAAAsQAAgD8AAACAAAAAsQAAgD8AAACAAAAAAAAAgD8AAACAAAAAAAAAgD8AAACAAAAAAAAAgD8AAACAAAAAAAAAgD8AAACAAAAAAAAAgD8AAACAAAAAAAAAgD8AAACAAAAAAAAAgD8AAACAAAAAAAAAgD8AAACAAAAAAAAAgD8AAACAAAAAAAAAgD8AAACAAAAAAAAAgD8AAACAAAAAAAAAgD8AAACAAAABAAMAAAADAAIABAAFAAcABAAHAAYACAAJAAsACAALAAoADAANAA8ADAAPAA4AEAARABMAEAATABIAFAAVABcAFAAXABYA"
+        }
+    ]
+}

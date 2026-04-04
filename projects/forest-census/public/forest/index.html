@@ -1,0 +1,1757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cube Census: Forest Edition</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800;900&display=swap');
+
+    :root {
+      --sky-top: #bfe8ff;
+      --horizon: #e9fff2;
+      --grass: #6cc04a;
+      --grass-shadow: #4e9a33;
+      --dirt: #b9855a;
+      --ink: #2a1b1b;
+      --accent: #b84a4a;
+      --accent-green: #8ddc4c;
+      --chick: #ffd33d;
+      --ui-font: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --ui-shadow: 0 18px 50px rgba(0, 0, 0, 0.25);
+      --ui-border: rgba(255, 255, 255, 0.22);
+      font-family: var(--ui-font);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: radial-gradient(circle at top, var(--sky-top), var(--horizon) 60%);
+      color: var(--ink);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #app {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #canvasWrap {
+      position: relative;
+      width: min(92vw, calc(92vh * (16 / 9)));
+      aspect-ratio: 16 / 9;
+      background: #000;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+      border-radius: 18px;
+      overflow: hidden;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      font-size: clamp(14px, 1.6vw, 18px);
+      color: var(--ink);
+    }
+
+    #hud[data-mode="menu"] #timer,
+    #hud[data-mode="menu"] #counterOverlay,
+    #hud[data-mode="menu"] #vignette,
+    #hud[data-mode="menu"] #alertVignette {
+      display: none;
+    }
+
+	    #hud[data-mode="results"] #timer,
+	    #hud[data-mode="results"] #counterOverlay,
+	    #hud[data-mode="results"] #vignette,
+	    #hud[data-mode="results"] #alertVignette {
+	      display: none;
+	    }
+
+	    #hud[data-mode="cutscene"] #timer,
+	    #hud[data-mode="cutscene"] #goalText,
+	    #hud[data-mode="cutscene"] #counterOverlay,
+	    #hud[data-mode="cutscene"] #vignette,
+	    #hud[data-mode="cutscene"] #alertVignette {
+	      display: none;
+	    }
+
+    #timer {
+      position: absolute;
+      top: 16px;
+      right: 20px;
+      left: auto;
+      transform: none;
+      z-index: 40;
+      transform-origin: right center;
+      font-size: clamp(28px, 3vw, 40px);
+      font-weight: 700;
+      padding: 6px 18px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.8);
+      letter-spacing: 0.05em;
+      transition: background 0.25s, color 0.25s;
+    }
+
+    #timer.low10 {
+      background: rgba(255, 210, 165, 0.9);
+    }
+
+    #timer.low5 {
+      background: rgba(255, 170, 170, 0.95);
+      color: #700b0b;
+    }
+
+    #timer.low2 {
+      animation: timerPulse 1s infinite;
+    }
+
+    @keyframes timerPulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+      100% { transform: scale(1); }
+    }
+
+    #counterOverlay {
+      position: absolute;
+      top: 28px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 180px;
+      height: 210px;
+      border-radius: 18px;
+      background: transparent;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      pointer-events: none;
+    }
+
+    #counterOverlay .counter-btn {
+      pointer-events: auto;
+      width: 52px;
+      height: 34px;
+      border: 0;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.85);
+      color: var(--ink);
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+      box-shadow: 0 10px 22px rgba(0, 0, 0, 0.25);
+      display: grid;
+      place-items: center;
+      user-select: none;
+      transition: transform 0.12s ease-out, background 0.12s ease-out;
+    }
+
+    #counterOverlay .counter-btn:active {
+      transform: scale(0.94);
+    }
+
+    #counterOverlay .counter-ring {
+      width: 110px;
+      height: 110px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.72);
+      border: 5px solid rgba(184, 74, 74, 0.85);
+      box-shadow: 0 18px 30px rgba(0, 0, 0, 0.22);
+      display: grid;
+      place-items: center;
+    }
+
+    #counterValue {
+      font-size: 64px;
+      font-weight: 900;
+      line-height: 1;
+      color: rgba(20, 14, 14, 0.95);
+      text-shadow: 0 2px 0 rgba(255,255,255,0.35);
+    }
+
+	    #goalText {
+	      position: absolute;
+	      top: 16px;
+	      left: 20px;
+	      z-index: 40;
+	      padding: 10px 14px;
+	      border-radius: 14px;
+	      background: rgba(255, 255, 255, 0.86);
+	      border: 1px solid rgba(255, 255, 255, 0.55);
+	      box-shadow: 0 14px 32px rgba(0, 0, 0, 0.18);
+	      font-weight: 800;
+	      letter-spacing: 0.04em;
+	      text-transform: uppercase;
+	      font-size: 14px;
+	    }
+
+	    #goalText .goalYellow {
+	      display: inline-block;
+	      padding: 2px 8px;
+	      border-radius: 999px;
+	      background: rgba(255, 211, 61, 0.7);
+	      border: 1px solid rgba(255, 211, 61, 0.85);
+	      color: rgba(42, 27, 27, 0.95);
+	      text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+	      letter-spacing: 0.08em;
+	    }
+
+	    #goalText .goalNote {
+	      opacity: 0.72;
+	      font-weight: 800;
+	      letter-spacing: 0.06em;
+	    }
+
+    #counterOverlay.denied {
+      filter: drop-shadow(0 0 0 rgba(0,0,0,0));
+      animation: counterShake 0.2s linear;
+    }
+
+    @keyframes counterShake {
+      0%, 100% { transform: translateX(-50%) translateX(0); }
+      25% { transform: translateX(-50%) translateX(-6px); }
+      75% { transform: translateX(-50%) translateX(6px); }
+    }
+
+    #counterOverlay.pop {
+      animation: counterPop 0.25s ease-out;
+    }
+
+    @keyframes counterPop {
+      0% { transform: translateX(-50%) scale(1); }
+      50% { transform: translateX(-50%) scale(1.08); }
+      100% { transform: translateX(-50%) scale(1); }
+    }
+
+    .panel {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      background: radial-gradient(circle at 50% 25%, rgba(20, 28, 35, 0.55), rgba(10, 12, 18, 0.7));
+      color: #fff;
+      padding: 40px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+      backdrop-filter: blur(6px);
+    }
+
+    .panel.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modalCard {
+      width: min(680px, 92%);
+      background: rgba(255, 255, 255, 0.92);
+      color: var(--ink);
+      border-radius: 18px;
+      padding: 26px 28px;
+      border: 1px solid rgba(255, 255, 255, 0.65);
+      box-shadow: var(--ui-shadow);
+      text-align: center;
+    }
+
+    .modalTitle {
+      font-size: clamp(34px, 5vw, 56px);
+      margin: 0 0 10px;
+      font-weight: 900;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .modalSubtitle {
+      margin: 0 auto 16px;
+      max-width: 620px;
+      font-size: clamp(15px, 2vw, 18px);
+      line-height: 1.5;
+      opacity: 0.9;
+    }
+
+    .modalHint {
+      margin-top: 14px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      opacity: 0.85;
+    }
+
+    #pauseOverlay {
+      font-size: clamp(24px, 4vw, 38px);
+    }
+
+    .controlsPanel {
+      margin-top: 14px;
+      width: min(520px, 92%);
+      background: rgba(255, 255, 255, 0.92);
+      color: var(--ink);
+      padding: 14px 16px;
+      border-radius: 14px;
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+      text-align: left;
+    }
+
+    .controlsPanel h3 {
+      margin: 0 0 8px;
+      font-size: 0.95em;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .controlsPanel ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      font-size: 0.92em;
+    }
+
+    .controlsPanel li {
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+      font-weight: 700;
+    }
+
+	    #floatingLayer {
+	      position: absolute;
+	      inset: 0;
+	      pointer-events: none;
+	      overflow: visible;
+	    }
+
+	    #cutsceneLayer {
+	      position: absolute;
+	      inset: 0;
+	      pointer-events: none;
+	      z-index: 45;
+	    }
+
+	    #hud:not([data-mode="cutscene"]) #cutsceneLayer {
+	      display: none;
+	    }
+
+	    .cutscene-marker {
+	      position: absolute;
+	      left: 0;
+	      top: 0;
+	      transform: translate(-50%, -50%) scale(0.86);
+	      transform-origin: center;
+	      opacity: 0;
+	      animation: cutscenePop 220ms ease-out forwards;
+	    }
+
+	    .cutscene-ring {
+	      width: 64px;
+	      height: 64px;
+	      border-radius: 999px;
+	      border: 3px solid rgba(255, 211, 61, 0.95);
+	      box-shadow:
+	        0 0 0 4px rgba(42, 27, 27, 0.18),
+	        0 10px 22px rgba(0, 0, 0, 0.24);
+	      background: rgba(255, 211, 61, 0.08);
+	    }
+
+	    .cutscene-num {
+	      position: absolute;
+	      left: 50%;
+	      top: -18px;
+	      transform: translateX(-50%);
+	      padding: 4px 10px;
+	      border-radius: 999px;
+	      background: rgba(255, 255, 255, 0.92);
+	      color: rgba(20, 14, 14, 0.95);
+	      font-weight: 900;
+	      letter-spacing: 0.05em;
+	      box-shadow: 0 10px 18px rgba(0, 0, 0, 0.22);
+	      border: 1px solid rgba(255, 255, 255, 0.7);
+	      font-size: 16px;
+	      line-height: 1;
+	      white-space: nowrap;
+	    }
+
+	    @keyframes cutscenePop {
+	      from { opacity: 0; transform: translate(-50%, -50%) scale(0.7); }
+	      to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+	    }
+
+	    .floating-label {
+	      position: absolute;
+	      color: var(--accent-green);
+	      font-weight: 700;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+      animation: floatUp 0.45s ease-out forwards;
+    }
+
+    @keyframes floatUp {
+      from { opacity: 1; transform: translate(-50%, -50%) translateY(0); }
+      to { opacity: 0; transform: translate(-50%, -50%) translateY(-30px); }
+    }
+
+    #vignette {
+      pointer-events: none;
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle, rgba(255, 211, 61, 0.2), transparent 60%);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    #vignette.active {
+      opacity: 1;
+    }
+
+    #alertVignette {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle, rgba(184, 74, 74, 0.2), transparent 60%);
+      mix-blend-mode: multiply;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    #alertVignette.visible {
+      opacity: 1;
+    }
+
+	    #pauseOverlay p,
+	    #resultOverlay p,
+	    #menuOverlay p {
+	      font-size: clamp(16px, 2vw, 20px);
+	      line-height: 1.5;
+	    }
+
+	    .resultGrid {
+	      display: grid;
+	      grid-template-columns: 1fr 1fr;
+	      gap: 12px;
+	      margin: 16px auto 10px;
+	      width: min(520px, 100%);
+	    }
+
+	    .resultStat {
+	      padding: 14px 14px 12px;
+	      border-radius: 16px;
+	      background: rgba(255, 255, 255, 0.86);
+	      border: 1px solid rgba(42, 27, 27, 0.1);
+	      box-shadow: 0 14px 26px rgba(0, 0, 0, 0.12);
+	    }
+
+	    .resultLabel {
+	      font-weight: 900;
+	      letter-spacing: 0.12em;
+	      text-transform: uppercase;
+	      opacity: 0.68;
+	      font-size: 12px;
+	      margin-bottom: 8px;
+	    }
+
+	    .resultValue {
+	      font-size: 52px;
+	      font-weight: 950;
+	      letter-spacing: 0.02em;
+	      line-height: 1;
+	      color: rgba(20, 14, 14, 0.95);
+	      text-shadow: 0 2px 0 rgba(255,255,255,0.35);
+	    }
+
+	    #resultOverlay[data-outcome="win"] .resultValue {
+	      color: rgba(44, 92, 22, 0.95);
+	    }
+
+	    #resultOverlay[data-outcome="lose"] .resultValue {
+	      color: rgba(120, 14, 14, 0.92);
+	    }
+
+	    .resultDiff {
+	      font-weight: 900;
+	      letter-spacing: 0.06em;
+	      text-transform: uppercase;
+	      opacity: 0.8;
+	      margin: 0 auto 6px;
+	    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="canvasWrap">
+      <canvas id="scene" width="960" height="540"></canvas>
+      <div class="overlay" id="hud">
+        <div id="timer">20.00</div>
+	        <div id="goalText">Goal: Count the <span class="goalYellow">YELLOW</span> chicks. <span class="goalNote">Ignore the others!</span></div>
+        <div id="counterOverlay" aria-label="Count UI">
+          <button class="counter-btn" data-direction="1" aria-label="Increase count">▲</button>
+          <div class="counter-ring" aria-hidden="true">
+            <div id="counterValue">0</div>
+          </div>
+          <button class="counter-btn" data-direction="-1" aria-label="Decrease count">▼</button>
+	        </div>
+	        <div id="floatingLayer"></div>
+	        <div id="cutsceneLayer"></div>
+	        <div id="vignette"></div>
+	        <div id="alertVignette"></div>
+	        <div id="menuOverlay" class="panel visible">
+          <div class="modalCard">
+            <h1 class="modalTitle">Voxel Census</h1>
+            <p class="modalSubtitle">Count <b>only</b> the yellow chicks. You have <b>20 seconds</b> to lock in your number. Press <b>Space</b> or <b>Enter</b> to submit.</p>
+            <div class="controlsPanel" aria-label="Controls">
+              <h3>Controls</h3>
+              <ul>
+                <li><span>WASD</span><span>Move</span></li>
+                <li><span>↑/↓</span><span>Count +/-</span></li>
+                <li><span>Shift</span><span>Run</span></li>
+                <li><span>Space / Enter</span><span>Submit</span></li>
+              </ul>
+            </div>
+            <div class="modalHint">Press Enter to begin</div>
+          </div>
+        </div>
+        <div id="pauseOverlay" class="panel">
+          <h2>Paused</h2>
+          <p>Press P / Esc to resume or Enter to restart.</p>
+        </div>
+	        <div id="resultOverlay" class="panel">
+	          <div class="modalCard">
+	            <h2 class="modalTitle" id="resultTitle">Results</h2>
+	            <div class="resultGrid" aria-label="Results breakdown">
+	              <div class="resultStat">
+	                <div class="resultLabel">Actual</div>
+	                <div class="resultValue" id="resultActual">0</div>
+	              </div>
+	              <div class="resultStat">
+	                <div class="resultLabel">Your count</div>
+	                <div class="resultValue" id="resultYour">0</div>
+	              </div>
+	            </div>
+	            <div class="resultDiff" id="resultDiff"></div>
+	            <p class="modalSubtitle" id="resultDetails"></p>
+	            <div class="modalHint">Enter: play again · Backspace: menu</div>
+	          </div>
+	        </div>
+      </div>
+    </div>
+  </div>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    import * as THREE from 'three';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { clone } from 'three/addons/utils/SkeletonUtils.js';
+
+    const CANVAS_WIDTH = 960;
+    const CANVAS_HEIGHT = 540;
+
+    const COLORS = {
+      skyTop: 0xBFE8FF,
+      horizon: 0xE9FFF2,
+      grass: 0x6CC04A,
+      dirt: 0xB9855A,
+      ink: 0x2A1B1B,
+      accent: 0xB84A4A,
+      chick: 0xFFD33D,
+    };
+
+	    const GAME_MODES = {
+	      LOADING: 'loading',
+	      MENU: 'menu',
+	      PLAYING: 'playing',
+	      PAUSED: 'paused',
+	      CUTSCENE: 'cutscene',
+	      RESULTS: 'results',
+	    };
+
+    const SPECIES = {
+      yellow: { key: 'chick', speed: [2.2, 2.8], turn: [0.35, 0.9], pause: [0.2, 0.5], count: [6, 14], color: COLORS.chick },
+      chicken: { key: 'chicken', speed: [1.8, 2.2], turn: [0.7, 1.5], pause: [0.3, 0.7], count: [3, 10], color: 0xF2F2F2 },
+      pig: { key: 'pig', speed: [1.5, 1.9], turn: [1.2, 2.0], pause: [0.4, 0.9], count: [2, 6], color: 0xF3A0B4 },
+      sheep: { key: 'sheep', speed: [1.6, 2.0], turn: [1.0, 1.8], pause: [0.4, 0.9], count: [2, 6], color: 0xD9D9D9 },
+    };
+
+    // Wide level so the player must pan the camera left/right (like the reference mock).
+    // We also keep a clear inner play lane (no colliding props) to reduce “bumping into stuff” frustration.
+    const WORLD_BOUNDS = { x: [-28, 28], z: [-10, 12] }; // for set dressing + camera clamp
+    const PLAY_BOUNDS = { x: [-24, 24], z: [-3.8, 7.8] }; // player + NPC movement area (extend downward toward camera)
+    const PLAYER_START = { x: 0, z: 5.8 };
+    const COUNTER_LIMIT = 24;
+
+	    const dom = {
+	      wrap: document.getElementById('canvasWrap'),
+	      canvas: document.getElementById('scene'),
+	      hud: document.getElementById('hud'),
+	      timer: document.getElementById('timer'),
+	      counter: document.getElementById('counterOverlay'),
+	      counterValue: document.getElementById('counterValue'),
+	      menu: document.getElementById('menuOverlay'),
+	      pause: document.getElementById('pauseOverlay'),
+	      result: document.getElementById('resultOverlay'),
+		      resultTitle: document.getElementById('resultTitle'),
+		      resultDetails: document.getElementById('resultDetails'),
+		      resultActual: document.getElementById('resultActual'),
+		      resultYour: document.getElementById('resultYour'),
+		      resultDiff: document.getElementById('resultDiff'),
+		      floatingLayer: document.getElementById('floatingLayer'),
+		      cutsceneLayer: document.getElementById('cutsceneLayer'),
+		      vignette: document.getElementById('vignette'),
+		      alertVignette: document.getElementById('alertVignette'),
+		    };
+
+    const renderer = new THREE.WebGLRenderer({ canvas: dom.canvas, antialias: true });
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.setSize(CANVAS_WIDTH, CANVAS_HEIGHT, false);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(COLORS.skyTop);
+    scene.fog = new THREE.FogExp2(COLORS.horizon, 0.035);
+
+    // Slightly lower, more parallel-to-ground framing (less top-down than before).
+    const camera = new THREE.PerspectiveCamera(46, CANVAS_WIDTH / CANVAS_HEIGHT, 0.1, 220);
+    camera.position.set(0, 6.1, 16.2);
+    camera.lookAt(0, 1.25, 0);
+
+    const clock = new THREE.Clock();
+
+    const loader = new GLTFLoader();
+    const assetCache = new Map();
+    const occluderMeshes = [];
+    const colliders = [];
+
+	    const state = {
+	      mode: GAME_MODES.LOADING,
+	      timer: 20,
+	      currentCount: 0,
+	      actualChicks: 0,
+	      lockedCount: 0,
+	      submitted: false,
+	      hasEnded: false,
+	      low10: false,
+	      low5: false,
+	      low2: false,
+	    };
+
+    const input = {
+      up: false,
+      down: false,
+      left: false,
+      right: false,
+      run: false,
+    };
+
+    const player = {
+      group: new THREE.Group(),
+      velocity: new THREE.Vector3(),
+      walkSpeed: 4.2,
+      runSpeed: 6.8,
+      accel: 18,
+      decel: 22,
+      forward: new THREE.Vector3(0, 0, -1),
+      bobTimer: 0,
+      mixer: null,
+      actions: new Map(),
+      currentAction: null,
+    };
+
+    const cameraRig = {
+      targetX: 0,
+      currentX: 0,
+      // Start panning earlier than “near the window edge” so movement feels responsive.
+      edgeThreshold: 0.55,
+    };
+
+    const atmosphere = {
+      points: null,
+      positions: null,
+      count: 340,
+      bounds: { x: 34, yMin: 0.8, yMax: 5.0, zMin: 2.0, zMax: 18.0 },
+      drift: 0.08,
+      rise: 0.12,
+    };
+
+	    const fx = {
+	      timeScale: 1,
+	      timeScaleTimer: 0,
+	      shake: 0,
+	      shakeTimer: 0,
+	    };
+
+	    const endCutscene = {
+	      active: false,
+	      elapsed: 0,
+	      panDuration: 4.8,
+	      endHold: 0.55,
+	      startX: 0,
+	      endX: 0,
+	      epsilonX: 0.15,
+	      orderedChicks: [],
+	      nextIdx: 0,
+	      count: 0,
+	      markers: [],
+	    };
+
+	    const npcControllers = [];
+	    const raycaster = new THREE.Raycaster();
+
+    async function loadManifest() {
+      const manifest = await fetch('../assets.json').then((res) => res.json());
+      const resolve = (rel) => {
+        if (typeof rel !== 'string') return rel;
+        return (rel.startsWith('http') || rel.startsWith('../') || rel.startsWith('/')) ? rel : `../${rel}`;
+      };
+      const ensure = (value, label) => {
+        const url = resolve(value);
+        if (!url) {
+          throw new Error(`Missing asset path for ${label}`);
+        }
+        return url;
+      };
+      const ensureArray = (values, label) => {
+        return values.map((value, idx) => ensure(value, `${label}[${idx}]`));
+      };
+      return {
+        player: ensure(manifest.assets.characters.Male_1, 'player'),
+        chick: ensure(manifest.assets.animals.Chick, 'chick'),
+        chicken: ensure(manifest.assets.animals.Chicken, 'chicken'),
+        pig: ensure(manifest.assets.animals.Pig, 'pig'),
+        sheep: ensure(manifest.assets.animals.Sheep, 'sheep'),
+        extraCharacters: ensureArray(
+          [manifest.assets.characters.Male_2, manifest.assets.characters.Female_1, manifest.assets.characters.Female_2],
+          'extraCharacters'
+        ),
+        trees: ensureArray(
+          [manifest.assets.environment.flora.Tree_1, manifest.assets.environment.flora.Tree_2, manifest.assets.environment.flora.Tree_3],
+          'trees'
+        ),
+        bush: ensure(manifest.assets.environment.flora.Bush, 'bush'),
+        rocks: ensureArray(
+          [manifest.assets.environment.resources.Rock1, manifest.assets.environment.resources.Rock2],
+          'rocks'
+        ),
+        mushrooms: ensure(manifest.assets.environment.flora.Mushroom, 'mushrooms'),
+        grasses: ensureArray(
+          [manifest.assets.environment.flora.GrassBig, manifest.assets.environment.flora.GrassSmall],
+          'grasses'
+        ),
+        flowers: ensureArray(
+          [manifest.assets.environment.flora.Flowers_1, manifest.assets.environment.flora.Flowers_2],
+          'flowers'
+        ),
+      };
+    }
+
+    async function loadGltf(key, url) {
+      if (assetCache.has(key)) {
+        const cached = assetCache.get(key);
+        return { root: clone(cached.scene), animations: cached.animations };
+      }
+      const gltf = await loader.loadAsync(url);
+      gltf.scene.traverse((child) => {
+        if (child.isMesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+          if (child.material && child.material.map) {
+            child.material.map.colorSpace = THREE.SRGBColorSpace;
+          }
+        }
+      });
+      assetCache.set(key, { scene: gltf.scene, animations: gltf.animations || [] });
+      return { root: clone(gltf.scene), animations: gltf.animations || [] };
+    }
+
+    function yawFromDirection(direction) {
+      // Reference-frame contract: this asset pack visually faces +Z at yaw=0.
+      // Rotate so local +Z faces the movement direction (fixes forward/back + left/right inversion).
+      return Math.atan2(direction.x, direction.z);
+    }
+
+    function dampAngle(current, target, lambda, dt) {
+      const tau = 1 - Math.exp(-lambda * dt);
+      const delta = THREE.MathUtils.euclideanModulo(target - current + Math.PI, Math.PI * 2) - Math.PI;
+      return current + delta * tau;
+    }
+
+    function buildActionMap(mixer, animations) {
+      const actions = new Map();
+      for (const clip of animations) {
+        const name = (clip.name || '').trim();
+        if (!name) continue;
+        actions.set(name.toLowerCase(), mixer.clipAction(clip));
+      }
+      return actions;
+    }
+
+    function pickActionName(actions, candidates) {
+      for (const candidate of candidates) {
+        const key = candidate.toLowerCase();
+        if (actions.has(key)) return key;
+      }
+      return null;
+    }
+
+    function playAction(actor, nextName, fadeSeconds = 0.15) {
+      if (!nextName) return;
+      if (actor.currentAction === nextName) return;
+
+      const next = actor.actions.get(nextName);
+      if (!next) return;
+
+      next.enabled = true;
+      next.reset();
+      next.fadeIn(fadeSeconds);
+      next.play();
+
+      if (actor.currentAction) {
+        const prev = actor.actions.get(actor.currentAction);
+        if (prev && prev !== next) {
+          prev.fadeOut(fadeSeconds);
+        }
+      }
+
+      actor.currentAction = nextName;
+    }
+
+    function normalizeToHeightAndGround(object, targetHeight, sink = 0.0) {
+      // Robust ground anchoring:
+      // 1) compute current bounds, scale to target height
+      // 2) recompute bounds AFTER scaling
+      // 3) translate so minY == 0 (plus optional sink)
+      const boxBefore = new THREE.Box3().setFromObject(object);
+      const heightBefore = (boxBefore.max.y - boxBefore.min.y) || 1;
+      const scale = targetHeight / heightBefore;
+      object.scale.setScalar(scale);
+
+      const boxAfter = new THREE.Box3().setFromObject(object);
+      object.position.y += (-boxAfter.min.y) + sink;
+      return object;
+    }
+
+    function anchorMinYToGround(object, sink = 0) {
+      object.updateWorldMatrix(true, true);
+      object.traverse((child) => {
+        if (child.isSkinnedMesh && child.skeleton) {
+          child.skeleton.update();
+        }
+      });
+      const box = new THREE.Box3().setFromObject(object);
+      object.position.y += (-box.min.y) + sink;
+    }
+
+    async function buildPlayer(assetPaths) {
+      const { root, animations } = await loadGltf('player', assetPaths.player);
+      normalizeToHeightAndGround(root, 1.6, 0);
+      player.group.add(root);
+      player.group.position.set(PLAYER_START.x, 0, PLAYER_START.z);
+
+      player.mixer = new THREE.AnimationMixer(root);
+      player.actions = buildActionMap(player.mixer, animations);
+      playAction(player, pickActionName(player.actions, ['Idle', 'Idle_Hold', 'Idle_Attack']), 0);
+      player.mixer.update(0);
+      anchorMinYToGround(root, -0.06);
+
+      // Face the camera by default (matches the mock where we see the player's front).
+      player.group.rotation.y = yawFromDirection(new THREE.Vector3(0, 0, 1));
+      scene.add(player.group);
+    }
+
+    async function createEnvironment(assetPaths) {
+      addLights();
+      createAtmosphere();
+      const ground = new THREE.Mesh(
+        new THREE.PlaneGeometry(70, 28, 70, 28),
+        new THREE.MeshStandardMaterial({ color: COLORS.grass, roughness: 0.85, metalness: 0 })
+      );
+      ground.rotation.x = -Math.PI / 2;
+      // Slightly lower the ground plane to hide tiny foot-floating gaps from animated/skinned bounds.
+      ground.position.y = -0.08;
+      ground.receiveShadow = true;
+      scene.add(ground);
+
+      await scatterEnvironment(assetPaths);
+    }
+
+    function createAtmosphere() {
+      if (atmosphere.points) return;
+      const geometry = new THREE.BufferGeometry();
+      const positions = new Float32Array(atmosphere.count * 3);
+      for (let i = 0; i < atmosphere.count; i += 1) {
+        const idx = i * 3;
+        positions[idx] = THREE.MathUtils.randFloat(-atmosphere.bounds.x, atmosphere.bounds.x);
+        positions[idx + 1] = THREE.MathUtils.randFloat(atmosphere.bounds.yMin, atmosphere.bounds.yMax);
+        positions[idx + 2] = THREE.MathUtils.randFloat(atmosphere.bounds.zMin, atmosphere.bounds.zMax);
+      }
+      geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      const material = new THREE.PointsMaterial({
+        color: 0xffffff,
+        size: 0.06,
+        transparent: true,
+        opacity: 0.35,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      });
+      const points = new THREE.Points(geometry, material);
+      points.position.set(0, 0, 0);
+      scene.add(points);
+      atmosphere.points = points;
+      atmosphere.positions = positions;
+    }
+
+    function updateAtmosphere(dt) {
+      if (!atmosphere.points || !atmosphere.positions) return;
+      // Keep particles centered around the current camera X so the field feels stable during panning.
+      atmosphere.points.position.x = cameraRig.currentX;
+      const positions = atmosphere.positions;
+      for (let i = 0; i < atmosphere.count; i += 1) {
+        const idx = i * 3;
+        positions[idx + 1] += atmosphere.rise * dt;
+        positions[idx] += Math.sin((idx + performance.now() * 0.0002)) * atmosphere.drift * dt;
+        if (positions[idx + 1] > atmosphere.bounds.yMax) {
+          positions[idx + 1] = atmosphere.bounds.yMin;
+          positions[idx] = THREE.MathUtils.randFloat(-atmosphere.bounds.x, atmosphere.bounds.x);
+          positions[idx + 2] = THREE.MathUtils.randFloat(atmosphere.bounds.zMin, atmosphere.bounds.zMax);
+        }
+        if (positions[idx] < -atmosphere.bounds.x) positions[idx] = atmosphere.bounds.x;
+        if (positions[idx] > atmosphere.bounds.x) positions[idx] = -atmosphere.bounds.x;
+      }
+      atmosphere.points.geometry.attributes.position.needsUpdate = true;
+    }
+
+    function addLights() {
+      const hemi = new THREE.HemisphereLight('#BFE8FF', '#E9FFF2', 0.85);
+      scene.add(hemi);
+
+      const dir = new THREE.DirectionalLight('#ffffff', 1.1);
+      dir.position.set(6, 12, 6);
+      dir.castShadow = true;
+      dir.shadow.mapSize.set(1024, 1024);
+      dir.shadow.camera.near = 1;
+      dir.shadow.camera.far = 40;
+      dir.shadow.camera.left = -15;
+      dir.shadow.camera.right = 15;
+      dir.shadow.camera.top = 15;
+      dir.shadow.camera.bottom = -15;
+      scene.add(dir);
+
+      const ambient = new THREE.AmbientLight('#ffffff', 0.15);
+      scene.add(ambient);
+    }
+
+    async function scatterEnvironment(assetPaths) {
+      const treePromises = [];
+      // Background tree line (visual depth, not gameplay occlusion).
+      const backgroundTreeCount = 26;
+      for (let i = 0; i < backgroundTreeCount; i += 1) {
+        const t = backgroundTreeCount === 1 ? 0 : i / (backgroundTreeCount - 1);
+        const x = THREE.MathUtils.lerp(WORLD_BOUNDS.x[0] + 2.0, WORLD_BOUNDS.x[1] - 2.0, t) + THREE.MathUtils.randFloat(-1.3, 1.3);
+        const z = THREE.MathUtils.randFloat(WORLD_BOUNDS.z[0] + 0.6, PLAY_BOUNDS.z[0] - 2.2);
+        treePromises.push(addEnvironmentInstance(
+          assetPaths.trees[i % assetPaths.trees.length],
+          { x, z },
+          { collidable: false, occluder: false, targetHeight: THREE.MathUtils.randFloat(3.4, 3.9) }
+        ));
+      }
+
+      // A few near-camera edge trees for slight foreground occlusion without blocking the whole lane.
+      const foregroundTreeCount = 4;
+      for (let i = 0; i < foregroundTreeCount; i += 1) {
+        const side = i % 2 === 0 ? -1 : 1;
+        const x = side * THREE.MathUtils.randFloat(PLAY_BOUNDS.x[1] - 1.0, WORLD_BOUNDS.x[1] - 1.0);
+        const z = THREE.MathUtils.randFloat(PLAY_BOUNDS.z[1] + 4.2, WORLD_BOUNDS.z[1] - 1.2);
+        treePromises.push(addEnvironmentInstance(
+          assetPaths.trees[i % assetPaths.trees.length],
+          { x, z },
+          { collidable: false, occluder: true, targetHeight: THREE.MathUtils.randFloat(3.2, 3.7) }
+        ));
+      }
+
+      const bushPromises = [];
+      for (let i = 0; i < 14; i += 1) {
+        bushPromises.push(addEnvironmentInstance(assetPaths.bush, randomObstaclePosition(), { collidable: true, occluder: true, targetHeight: 1.05 }));
+      }
+      const rockPromises = [];
+      for (let i = 0; i < 10; i += 1) {
+        rockPromises.push(addEnvironmentInstance(assetPaths.rocks[i % assetPaths.rocks.length], randomObstaclePosition(), { collidable: true, occluder: true, targetHeight: 0.85 }));
+      }
+      const fillerPromises = [];
+      for (let i = 0; i < 10; i += 1) {
+        fillerPromises.push(addEnvironmentInstance(assetPaths.grasses[i % assetPaths.grasses.length], randomFillerPosition(), { collidable: false, occluder: false, targetHeight: 0.55 }));
+      }
+      for (let i = 0; i < 6; i += 1) {
+        fillerPromises.push(addEnvironmentInstance(assetPaths.flowers[i % assetPaths.flowers.length], randomFillerPosition(), { collidable: false, occluder: false, targetHeight: 0.45 }));
+      }
+      await Promise.all([...treePromises, ...bushPromises, ...rockPromises, ...fillerPromises]);
+    }
+
+    function randomObstaclePosition() {
+      // Colliding obstacles live OUTSIDE the play lane. Inside the lane is kept clear to prevent frustration.
+      for (let i = 0; i < 200; i += 1) {
+        const x = THREE.MathUtils.randFloat(WORLD_BOUNDS.x[0] + 1.4, WORLD_BOUNDS.x[1] - 1.4);
+        const z = THREE.MathUtils.randFloat(WORLD_BOUNDS.z[0] + 1.4, 6.0);
+        const outsidePlayLane = z < PLAY_BOUNDS.z[0] - 0.6 || z > PLAY_BOUNDS.z[1] + 0.6 || Math.abs(x) > PLAY_BOUNDS.x[1] - 0.8;
+        if (!outsidePlayLane) continue;
+        return { x, z };
+      }
+      return { x: 12, z: -2.5 };
+    }
+
+    function randomFillerPosition() {
+      return {
+        x: THREE.MathUtils.randFloat(WORLD_BOUNDS.x[0] + 1.0, WORLD_BOUNDS.x[1] - 1.0),
+        z: THREE.MathUtils.randFloat(WORLD_BOUNDS.z[0] + 1.0, 6.0),
+      };
+    }
+
+    async function addEnvironmentInstance(path, position, options) {
+      const { collidable, occluder, targetHeight } = options;
+      const { root } = await loadGltf(path, path);
+      const mesh = root;
+      if (typeof targetHeight === 'number') {
+        normalizeToHeightAndGround(mesh, targetHeight, -0.01);
+      }
+      mesh.position.set(position.x, 0, position.z);
+      scene.add(mesh);
+      if (collidable) {
+        registerCollider(mesh);
+      }
+      if (occluder) {
+        occluderMeshes.push(mesh);
+      }
+    }
+
+    function registerCollider(object) {
+      const box = new THREE.Box3().setFromObject(object);
+      colliders.push({ box });
+    }
+
+    function resetColliders() {
+      colliders.length = 0;
+      occluderMeshes.length = 0;
+    }
+
+	    function setMode(next) {
+	      state.mode = next;
+	      dom.hud.dataset.mode = next;
+	      dom.menu.classList.toggle('visible', next === GAME_MODES.MENU);
+	      dom.pause.classList.toggle('visible', next === GAME_MODES.PAUSED);
+	      dom.result.classList.toggle('visible', next === GAME_MODES.RESULTS);
+	      if (next !== GAME_MODES.CUTSCENE && endCutscene.active) {
+	        clearEndCutscene();
+	      }
+	      if (next !== GAME_MODES.PLAYING) {
+	        dom.alertVignette.classList.remove('visible');
+	      }
+	    }
+
+    function updateTimerClasses() {
+      dom.timer.classList.toggle('low10', state.timer <= 10);
+      dom.timer.classList.toggle('low5', state.timer <= 5);
+      dom.timer.classList.toggle('low2', state.timer <= 2);
+      dom.alertVignette.classList.toggle('visible', state.timer <= 2 && state.mode === GAME_MODES.PLAYING);
+    }
+
+	    function adjustCounter(delta) {
+	      if (state.mode !== GAME_MODES.PLAYING || state.hasEnded) return;
+	      const prev = state.currentCount;
+	      state.currentCount = THREE.MathUtils.clamp(state.currentCount + delta, 0, COUNTER_LIMIT);
+	      if (state.currentCount !== prev) {
+	        dom.counterValue.textContent = String(state.currentCount);
+	        dom.counter.classList.remove('pop');
+        void dom.counter.offsetWidth;
+        dom.counter.classList.add('pop');
+      } else {
+        dom.counter.classList.remove('denied');
+        void dom.counter.offsetWidth;
+        dom.counter.classList.add('denied');
+      }
+    }
+
+	    function attachCounterButtons() {
+	      dom.counter.addEventListener('click', (event) => {
+	        if (state.mode !== GAME_MODES.PLAYING || state.hasEnded) return;
+	        const dir = event.target.getAttribute('data-direction');
+	        if (!dir) return;
+	        adjustCounter(Number(dir));
+	      });
+	    }
+
+    function handleKeyDown(event) {
+      switch (event.code) {
+	        case 'KeyW':
+	        case 'ArrowUp':
+	          if (event.code === 'ArrowUp') {
+	            if (state.mode === GAME_MODES.PLAYING && !state.hasEnded) {
+	              adjustCounter(1);
+	            }
+	            event.preventDefault();
+	            return;
+	          }
+	          input.up = true;
+	          break;
+	        case 'KeyS':
+	        case 'ArrowDown':
+	          if (event.code === 'ArrowDown') {
+	            if (state.mode === GAME_MODES.PLAYING && !state.hasEnded) {
+	              adjustCounter(-1);
+	            }
+	            event.preventDefault();
+	            return;
+	          }
+	          input.down = true;
+	          break;
+        case 'KeyA':
+          input.left = true;
+          break;
+        case 'KeyD':
+          input.right = true;
+          break;
+        case 'ShiftLeft':
+        case 'ShiftRight':
+          input.run = true;
+          break;
+        case 'Space':
+          if (state.mode === GAME_MODES.PLAYING) {
+            submitCount();
+          }
+          break;
+        case 'Enter':
+          if (state.mode === GAME_MODES.PLAYING) {
+            submitCount();
+          } else if (state.mode === GAME_MODES.MENU) {
+            startRound().catch(console.error);
+          } else if (state.mode === GAME_MODES.RESULTS) {
+            startRound().catch(console.error);
+          } else if (state.mode === GAME_MODES.PAUSED) {
+            resumeGame();
+          }
+          break;
+        case 'KeyP':
+        case 'Escape':
+          if (state.mode === GAME_MODES.PLAYING) {
+            pauseGame();
+          } else if (state.mode === GAME_MODES.PAUSED) {
+            resumeGame();
+          }
+          break;
+        case 'Backspace':
+          if (state.mode !== GAME_MODES.MENU) {
+            setMode(GAME_MODES.MENU);
+          }
+          break;
+        default:
+          break;
+      }
+    }
+
+    function handleKeyUp(event) {
+      switch (event.code) {
+        case 'KeyW':
+          input.up = false;
+          break;
+        case 'KeyS':
+          input.down = false;
+          break;
+        case 'KeyA':
+          input.left = false;
+          break;
+        case 'KeyD':
+          input.right = false;
+          break;
+        case 'ShiftLeft':
+        case 'ShiftRight':
+          input.run = false;
+          break;
+        default:
+          break;
+      }
+    }
+
+    function pauseGame() {
+      if (state.mode !== GAME_MODES.PLAYING) return;
+      setMode(GAME_MODES.PAUSED);
+    }
+
+    function resumeGame() {
+      if (state.mode !== GAME_MODES.PAUSED) return;
+      clock.getDelta();
+      setMode(GAME_MODES.PLAYING);
+    }
+
+	    function submitCount() {
+	      if (state.submitted) return;
+	      state.submitted = true;
+	      state.lockedCount = state.currentCount;
+	      fx.shakeTimer = 0.25;
+	      fx.shake = state.lockedCount === state.actualChicks ? 0.02 : 0.06;
+	      state.hasEnded = true;
+	      startEndCutscene();
+	    }
+
+		    function revealResults() {
+		      const win = state.lockedCount === state.actualChicks;
+		      dom.resultTitle.textContent = win ? 'Correct!' : 'Wrong!';
+		      dom.result.dataset.outcome = win ? 'win' : 'lose';
+		      dom.resultActual.textContent = String(state.actualChicks);
+		      dom.resultYour.textContent = String(state.lockedCount);
+		      const diff = Math.abs(state.actualChicks - state.lockedCount);
+		      dom.resultDiff.textContent = diff === 0 ? 'Perfect match' : `Off by ${diff}`;
+		      dom.resultDetails.textContent = win ? 'Nailed it.' : 'Close—try again.';
+		      setMode(GAME_MODES.RESULTS);
+		    }
+
+		    function clearEndCutscene() {
+		      endCutscene.active = false;
+		      endCutscene.elapsed = 0;
+		      endCutscene.orderedChicks = [];
+		      endCutscene.nextIdx = 0;
+		      endCutscene.count = 0;
+		      endCutscene.markers.forEach((marker) => marker.el.remove());
+		      endCutscene.markers.length = 0;
+		    }
+
+		    function startEndCutscene() {
+		      clearEndCutscene();
+		      const ordered = npcControllers
+		        .filter((npc) => npc.type === 'yellow')
+		        .slice()
+		        .sort((a, b) => a.group.position.x - b.group.position.x);
+
+		      const hardMin = WORLD_BOUNDS.x[0] + 2;
+		      const hardMax = WORLD_BOUNDS.x[1] - 2;
+		      const pad = 5.0;
+
+		      const leftMost = ordered.length ? ordered[0].group.position.x : PLAY_BOUNDS.x[0];
+		      const rightMost = ordered.length ? ordered[ordered.length - 1].group.position.x : PLAY_BOUNDS.x[1];
+		      let leftX = THREE.MathUtils.clamp(leftMost - pad, hardMin, hardMax);
+		      let rightX = THREE.MathUtils.clamp(rightMost + pad, hardMin, hardMax);
+		      if (rightX - leftX < 1.0) rightX = Math.min(hardMax, leftX + 1.0);
+
+		      endCutscene.active = true;
+		      endCutscene.startX = leftX;
+		      endCutscene.endX = rightX;
+		      endCutscene.orderedChicks = ordered;
+		      endCutscene.nextIdx = 0;
+		      endCutscene.count = 0;
+
+		      cameraRig.currentX = leftX;
+		      cameraRig.targetX = leftX;
+		      camera.position.x = leftX;
+		      camera.lookAt(leftX, 1.2, 0);
+
+		      setMode(GAME_MODES.CUTSCENE);
+		    }
+
+		    function createEndCutsceneMarker(npc, number) {
+		      const el = document.createElement('div');
+		      el.className = 'cutscene-marker';
+
+		      const ring = document.createElement('div');
+		      ring.className = 'cutscene-ring';
+
+		      const num = document.createElement('div');
+		      num.className = 'cutscene-num';
+		      num.textContent = String(number);
+
+		      el.appendChild(ring);
+		      el.appendChild(num);
+		      dom.cutsceneLayer.appendChild(el);
+
+		      endCutscene.markers.push({ npc, el });
+		    }
+
+		    function updateEndCutscene(dt) {
+		      if (!endCutscene.active) return;
+
+		      endCutscene.elapsed += dt;
+		      const panT = THREE.MathUtils.clamp(endCutscene.elapsed / endCutscene.panDuration, 0, 1);
+		      const eased = panT * panT * (3 - 2 * panT); // smoothstep
+		      const x = THREE.MathUtils.lerp(endCutscene.startX, endCutscene.endX, eased);
+
+		      cameraRig.currentX = x;
+		      cameraRig.targetX = x;
+		      camera.position.x = x;
+		      camera.lookAt(x, 1.2, 0);
+
+		      while (endCutscene.nextIdx < endCutscene.orderedChicks.length) {
+		        const npc = endCutscene.orderedChicks[endCutscene.nextIdx];
+		        if (npc.group.position.x > x + endCutscene.epsilonX) break;
+		        endCutscene.count += 1;
+		        createEndCutsceneMarker(npc, endCutscene.count);
+		        endCutscene.nextIdx += 1;
+		      }
+
+		      if (panT >= 1 && endCutscene.elapsed >= endCutscene.panDuration + endCutscene.endHold) {
+		        clearEndCutscene();
+		        revealResults();
+		      }
+		    }
+
+	    async function startRound() {
+	      clearEndCutscene();
+	      state.timer = 20;
+	      state.currentCount = 0;
+	      state.actualChicks = 0;
+	      state.lockedCount = 0;
+	      state.submitted = false;
+	      state.hasEnded = false;
+	      state.low10 = state.low5 = state.low2 = false;
+      dom.counterValue.textContent = '0';
+      dom.timer.textContent = '20.00';
+      resetNPCs();
+      await spawnNPCs();
+      player.group.position.set(PLAYER_START.x, 0, PLAYER_START.z);
+      player.velocity.set(0, 0, 0);
+      setMode(GAME_MODES.PLAYING);
+      clock.getDelta();
+    }
+
+    function resetNPCs() {
+      npcControllers.forEach((npc) => {
+        scene.remove(npc.group);
+      });
+      npcControllers.length = 0;
+    }
+
+    async function spawnNPCs() {
+      const speciesEntries = Object.entries(SPECIES);
+      for (const [key, config] of speciesEntries) {
+        const count = randomInt(config.count[0], config.count[1]);
+        for (let i = 0; i < count; i += 1) {
+          const npc = await createNPC(key, config);
+          if (key === 'yellow') {
+            state.actualChicks += 1;
+          }
+          npcControllers.push(npc);
+        }
+      }
+
+      // Extra distractor NPCs (other characters) — small count so they add noise without overwhelming.
+      await spawnExtraCharacters(3);
+    }
+
+    async function spawnExtraCharacters(count) {
+      if (!assetPathsLive || !assetPathsLive.extraCharacters) return;
+      for (let i = 0; i < count; i += 1) {
+        const path = assetPathsLive.extraCharacters[i % assetPathsLive.extraCharacters.length];
+        const npc = await createExtraCharacter(path);
+        npcControllers.push(npc);
+      }
+    }
+
+    async function createExtraCharacter(path) {
+      const { root, animations } = await loadGltf(path, path);
+      normalizeToHeightAndGround(root, 1.6, 0);
+      const group = new THREE.Group();
+      group.add(root);
+      const pos = findFreePosition();
+      group.position.set(pos.x, 0, pos.z);
+      scene.add(group);
+
+      const mixer = new THREE.AnimationMixer(root);
+      const actions = buildActionMap(mixer, animations);
+      const actor = { mixer, actions, currentAction: null };
+
+      const behavior = Math.random();
+      let speed = 0;
+      let dir = new THREE.Vector3(0, 0, 1);
+      let pauseTimer = 0;
+      if (behavior < 0.34) {
+        // Idle in place
+        speed = 0;
+        dir = randomDirection();
+        pauseTimer = 9999;
+        playAction(actor, pickActionName(actions, ['Idle', 'Idle_Hold', 'Idle_Attack']), 0);
+      } else if (behavior < 0.75) {
+        // Walk around
+        speed = THREE.MathUtils.randFloat(1.8, 2.4);
+        dir = randomDirection();
+        playAction(actor, pickActionName(actions, ['Walk', 'Walk_Hold', 'Run']), 0);
+      } else {
+        // Run around
+        speed = THREE.MathUtils.randFloat(3.2, 4.2);
+        dir = randomDirection();
+        playAction(actor, pickActionName(actions, ['Run', 'Walk', 'Walk_Hold']), 0);
+      }
+
+      actor.mixer.update(0);
+      anchorMinYToGround(root, -0.06);
+
+      return {
+        type: 'extraCharacter',
+        group,
+        dir,
+        speed,
+        turnTimer: THREE.MathUtils.randFloat(0.8, 1.8),
+        pauseTimer,
+        config: { turn: [0.8, 1.8] },
+        sighted: true,
+        actor,
+      };
+    }
+
+    async function createNPC(type, config) {
+      const { root, animations } = await loadGltf(config.key, getAssetPath(config.key));
+      const mesh = root;
+      // Larger animals for readability.
+      normalizeToHeightAndGround(mesh, type === 'yellow' ? 0.82 : type === 'chicken' ? 1.08 : type === 'pig' ? 0.92 : 1.08, 0);
+      const group = new THREE.Group();
+      group.add(mesh);
+      const pos = findFreePosition();
+      group.position.set(pos.x, 0, pos.z);
+      scene.add(group);
+      const mixer = new THREE.AnimationMixer(mesh);
+      const actions = buildActionMap(mixer, animations);
+      const actor = { mixer, actions, currentAction: null };
+      playAction(actor, pickActionName(actions, ['Idle', 'Idle_Peck', 'Idle_Eating']), 0);
+      actor.mixer.update(0);
+      anchorMinYToGround(mesh, -0.035);
+      return {
+        type,
+        group,
+        dir: randomDirection(),
+        speed: THREE.MathUtils.randFloat(config.speed[0], config.speed[1]),
+        turnTimer: THREE.MathUtils.randFloat(config.turn[0], config.turn[1]),
+        pauseTimer: THREE.MathUtils.randFloat(0, config.pause[1]),
+        config,
+        sighted: false,
+        actor,
+      };
+    }
+
+    function getAssetPath(key) {
+      for (const [label, path] of assetMapping) {
+        if (label === key) return path;
+      }
+      return key;
+    }
+
+    function findFreePosition() {
+      let attempts = 0;
+      while (attempts < 100) {
+        const x = THREE.MathUtils.randFloat(PLAY_BOUNDS.x[0] + 1, PLAY_BOUNDS.x[1] - 1);
+        const z = THREE.MathUtils.randFloat(PLAY_BOUNDS.z[0] + 0.6, PLAY_BOUNDS.z[1] - 0.6);
+        const dx = x - PLAYER_START.x;
+        const dz = z - PLAYER_START.z;
+        if (Math.hypot(dx, dz) < 2.8) {
+          attempts += 1;
+          continue;
+        }
+        if (!collidesWithObstacles(x, z)) {
+          return { x, z };
+        }
+        attempts += 1;
+      }
+      return { x: THREE.MathUtils.randFloat(-8, 8), z: THREE.MathUtils.randFloat(-3, 3) };
+    }
+
+    function collidesWithObstacles(x, z) {
+      for (const { box } of colliders) {
+        if (!box) continue;
+        if (x > box.min.x - 0.5 && x < box.max.x + 0.5 && z > box.min.z - 0.5 && z < box.max.z + 0.5) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    function randomDirection() {
+      return new THREE.Vector3(Math.random() * 2 - 1, 0, Math.random() * 2 - 1).normalize();
+    }
+
+    function randomInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+	    function update(dt) {
+	      if (state.mode === GAME_MODES.PLAYING) {
+	        updatePlayer(dt * fx.timeScale);
+	        updateNPCs(dt * fx.timeScale);
+	        processSightings();
+	        updateTimer(dt * fx.timeScale);
+	      } else if (state.mode === GAME_MODES.CUTSCENE) {
+	        updateEndCutscene(dt);
+	      }
+	      updateCamera(dt);
+	      updateFx(dt);
+	      updateAtmosphere(dt);
+	      renderFloating();
+	    }
+
+    function updatePlayer(dt) {
+      const direction = new THREE.Vector3();
+      if (input.up) direction.z -= 1;
+      if (input.down) direction.z += 1;
+      if (input.left) direction.x -= 1;
+      if (input.right) direction.x += 1;
+      direction.normalize();
+
+      const moving = direction.lengthSq() > 0;
+      const running = moving && input.run;
+      const maxSpeed = running ? player.runSpeed : player.walkSpeed;
+      if (direction.lengthSq() > 0) {
+        player.velocity.x = THREE.MathUtils.damp(player.velocity.x, direction.x * maxSpeed, player.accel, dt);
+        player.velocity.z = THREE.MathUtils.damp(player.velocity.z, direction.z * maxSpeed, player.accel, dt);
+        player.forward.copy(direction);
+      } else {
+        player.velocity.x = THREE.MathUtils.damp(player.velocity.x, 0, player.decel, dt);
+        player.velocity.z = THREE.MathUtils.damp(player.velocity.z, 0, player.decel, dt);
+      }
+
+      applyMovement(player.group, player.velocity, dt);
+      player.bobTimer += dt * (running ? 7.2 : moving ? 6 : 2);
+      player.group.position.y = Math.sin(player.bobTimer) * 0.05;
+
+      // Turn to face movement direction (smooth).
+      if (moving) {
+        const desiredYaw = yawFromDirection(direction);
+        player.group.rotation.y = dampAngle(player.group.rotation.y, desiredYaw, 18, dt);
+      }
+
+      // Animation: Idle vs Walk/Run.
+      if (player.mixer) {
+        const runName = pickActionName(player.actions, ['Run', 'Run_Hold', 'Walk', 'Walk_Hold']);
+        const walkName = pickActionName(player.actions, ['Walk', 'Walk_Hold', 'Run', 'Run_Hold']);
+        const idleName = pickActionName(player.actions, ['Idle', 'Idle_Hold', 'Idle_Attack']);
+        playAction(player, moving ? (running ? runName : walkName) : idleName);
+        player.mixer.update(dt);
+      }
+    }
+
+    function applyMovement(target, velocity, dt) {
+      const nextPos = target.position.clone().addScaledVector(velocity, dt);
+      nextPos.x = THREE.MathUtils.clamp(nextPos.x, PLAY_BOUNDS.x[0], PLAY_BOUNDS.x[1]);
+      nextPos.z = THREE.MathUtils.clamp(nextPos.z, PLAY_BOUNDS.z[0], PLAY_BOUNDS.z[1]);
+      for (const { box } of colliders) {
+        if (!box) continue;
+        if (nextPos.x > box.min.x - 0.4 && nextPos.x < box.max.x + 0.4 && nextPos.z > box.min.z - 0.4 && nextPos.z < box.max.z + 0.4) {
+          if (Math.abs(target.position.x - box.min.x) < Math.abs(target.position.z - box.min.z)) {
+            nextPos.z = target.position.z;
+            velocity.z = 0;
+          } else {
+            nextPos.x = target.position.x;
+            velocity.x = 0;
+          }
+        }
+      }
+      target.position.set(nextPos.x, target.position.y, nextPos.z);
+    }
+
+    function updateNPCs(dt) {
+      npcControllers.forEach((npc) => {
+        npc.turnTimer -= dt;
+        npc.pauseTimer -= dt;
+        const moving = npc.pauseTimer <= 0;
+        if (npc.turnTimer <= 0) {
+          npc.dir = randomDirection();
+          npc.turnTimer = THREE.MathUtils.randFloat(npc.config.turn[0], npc.config.turn[1]);
+        }
+        if (moving) {
+          npc.group.position.addScaledVector(npc.dir, npc.speed * dt);
+        }
+        const pos = npc.group.position;
+        if (pos.x < PLAY_BOUNDS.x[0] || pos.x > PLAY_BOUNDS.x[1]) {
+          npc.dir.x *= -1;
+          pos.x = THREE.MathUtils.clamp(pos.x, PLAY_BOUNDS.x[0], PLAY_BOUNDS.x[1]);
+        }
+        if (pos.z < PLAY_BOUNDS.z[0] || pos.z > PLAY_BOUNDS.z[1]) {
+          npc.dir.z *= -1;
+          pos.z = THREE.MathUtils.clamp(pos.z, PLAY_BOUNDS.z[0], PLAY_BOUNDS.z[1]);
+        }
+
+        // Turn to face movement direction (smooth).
+        if (moving) {
+          const desiredYaw = yawFromDirection(npc.dir);
+          npc.group.rotation.y = dampAngle(npc.group.rotation.y, desiredYaw, 12, dt);
+        }
+
+        // Animation update.
+        if (npc.actor && npc.actor.mixer) {
+          const runName = pickActionName(npc.actor.actions, ['Run', 'Walk']);
+          const idleName = pickActionName(npc.actor.actions, ['Idle_Peck', 'Idle_Eating', 'Idle']);
+          playAction(npc.actor, moving ? runName : idleName);
+          npc.actor.mixer.update(dt);
+        }
+      });
+    }
+
+    function processSightings() {
+      const playerForward = player.forward.clone().normalize();
+      const playerEye = player.group.position.clone().add(new THREE.Vector3(0, 1.2, 0));
+      npcControllers.forEach((npc) => {
+        if (npc.type !== 'yellow' || npc.sighted) return;
+        const toNpc = npc.group.position.clone().sub(player.group.position);
+        const horizontalDist = Math.hypot(toNpc.x, toNpc.z);
+        if (horizontalDist > 3.2) return;
+        toNpc.y = 0;
+        toNpc.normalize();
+        const dot = toNpc.dot(playerForward);
+        if (dot < Math.cos(THREE.MathUtils.degToRad(60))) return;
+        raycaster.set(playerEye, npc.group.position.clone().sub(playerEye).normalize());
+        const intersects = raycaster.intersectObjects(occluderMeshes, true);
+        if (intersects.length && intersects[0].distance < playerEye.distanceTo(npc.group.position)) {
+          return;
+        }
+        npc.sighted = true;
+        triggerConfirmed(npc.group.position);
+      });
+    }
+
+    function triggerConfirmed(position) {
+      fx.timeScale = 0.92;
+      fx.timeScaleTimer = 0.25;
+      dom.vignette.classList.add('active');
+      spawnFloatingLabel(position, 'CONFIRMED +1');
+      setTimeout(() => dom.vignette.classList.remove('active'), 200);
+    }
+
+    function spawnFloatingLabel(worldPosition, text) {
+      const screenPos = worldToScreen(worldPosition);
+      if (!screenPos) return;
+      const node = document.createElement('div');
+      node.className = 'floating-label';
+      node.textContent = text;
+      node.style.left = `${screenPos.x}px`;
+      node.style.top = `${screenPos.y}px`;
+      dom.floatingLayer.appendChild(node);
+      setTimeout(() => node.remove(), 450);
+    }
+
+    function worldToScreen(position) {
+      const rect = dom.canvas.getBoundingClientRect();
+      const projected = position.clone().project(camera);
+      const x = (projected.x * 0.5 + 0.5) * rect.width;
+      const y = (-projected.y * 0.5 + 0.5) * rect.height;
+      if (projected.z < -1 || projected.z > 1) return null;
+      return { x, y };
+    }
+
+    function updateTimer(dt) {
+      if (state.hasEnded) return;
+      state.timer = Math.max(0, state.timer - dt);
+      dom.timer.textContent = state.timer.toFixed(2).padStart(5, '0');
+      if (state.timer <= 0) {
+        submitCount();
+      }
+      updateTimerClasses();
+    }
+
+	    function updateCamera(dt) {
+	      if (state.mode === GAME_MODES.CUTSCENE) return;
+	      const ndc = player.group.position.clone().project(camera);
+	      if (state.mode === GAME_MODES.PLAYING) {
+	        if (ndc.x < -cameraRig.edgeThreshold) {
+	          cameraRig.targetX -= 0.14;
+        } else if (ndc.x > cameraRig.edgeThreshold) {
+          cameraRig.targetX += 0.14;
+        }
+      } else {
+        cameraRig.targetX = THREE.MathUtils.damp(cameraRig.targetX, 0, 4, dt);
+      }
+      cameraRig.targetX = THREE.MathUtils.clamp(cameraRig.targetX, PLAY_BOUNDS.x[0] + 6, PLAY_BOUNDS.x[1] - 6);
+      cameraRig.currentX = THREE.MathUtils.damp(cameraRig.currentX, cameraRig.targetX, 6.5, dt);
+      camera.position.x = cameraRig.currentX;
+      camera.lookAt(cameraRig.currentX, 1.2, 0);
+    }
+
+    function updateFx(dt) {
+      if (fx.timeScaleTimer > 0) {
+        fx.timeScaleTimer -= dt;
+        if (fx.timeScaleTimer <= 0) {
+          fx.timeScale = 1;
+        }
+      }
+      if (fx.shakeTimer > 0) {
+        fx.shakeTimer -= dt;
+        const intensity = fx.shake;
+        renderer.domElement.style.transform = `translate(${(Math.random() - 0.5) * intensity * 50}px, ${(Math.random() - 0.5) * intensity * 50}px)`;
+        if (fx.shakeTimer <= 0) {
+          renderer.domElement.style.transform = '';
+        }
+      }
+    }
+
+	    function renderFloating() {
+	      if (state.mode !== GAME_MODES.CUTSCENE || !endCutscene.active) return;
+	      endCutscene.markers.forEach((marker) => {
+	        const world = marker.npc.group.position.clone().add(new THREE.Vector3(0, 0.65, 0));
+	        const screen = worldToScreen(world);
+	        if (!screen) {
+	          marker.el.style.display = 'none';
+	          return;
+	        }
+	        marker.el.style.display = '';
+	        marker.el.style.left = `${screen.x}px`;
+	        marker.el.style.top = `${screen.y}px`;
+	      });
+	    }
+
+    function resize() {
+      const rect = dom.wrap.getBoundingClientRect();
+      renderer.domElement.style.width = `${rect.width}px`;
+      renderer.domElement.style.height = `${rect.height}px`;
+    }
+
+    window.addEventListener('resize', resize);
+
+    async function bootstrap() {
+      attachCounterButtons();
+      window.addEventListener('keydown', handleKeyDown);
+      window.addEventListener('keyup', handleKeyUp);
+      const assetPaths = await loadManifest();
+      assetPathsLive = assetPaths;
+      assetMapping = Object.entries({
+        player: assetPaths.player,
+        chick: assetPaths.chick,
+        chicken: assetPaths.chicken,
+        pig: assetPaths.pig,
+        sheep: assetPaths.sheep,
+      });
+      await createEnvironment(assetPaths);
+      await buildPlayer(assetPaths);
+      setMode(GAME_MODES.MENU);
+      clock.start();
+      renderer.setAnimationLoop(loop);
+      resize();
+    }
+
+    let assetMapping = [];
+    let assetPathsLive = null;
+
+    function loop() {
+      const dt = clock.getDelta();
+      update(dt);
+      renderer.render(scene, camera);
+    }
+
+    bootstrap().catch((err) => {
+      console.error(err);
+      dom.menu.querySelector('p').textContent = 'Failed to load assets. Check console for details.';
+    });
+  </script>
+</body>
+</html>

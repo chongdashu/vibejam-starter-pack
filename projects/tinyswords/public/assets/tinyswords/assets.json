@@ -1,0 +1,398 @@
+{
+  "meta": {
+    "name": "Tiny Swords Asset Pack",
+    "version": "1.0.0",
+    "basePath": "/assets/tinyswords",
+    "tileSize": 64,
+    "colorVariants": ["black", "blue", "purple", "red", "yellow"]
+  },
+  "spritesheets": {
+    "units": {
+      "standard": {
+        "frameWidth": 192,
+        "frameHeight": 192
+      },
+      "lancer": {
+        "frameWidth": 320,
+        "frameHeight": 320
+      }
+    },
+    "terrain": {
+      "tilemap": {
+        "frameWidth": 64,
+        "frameHeight": 64,
+        "columns": 9,
+        "rows": 6
+      }
+    },
+    "particles": {
+      "small": {
+        "frameWidth": 64,
+        "frameHeight": 64
+      },
+      "large": {
+        "frameWidth": 192,
+        "frameHeight": 192
+      }
+    }
+  },
+  "buildings": {
+    "colorVariants": ["black", "blue", "purple", "red", "yellow"],
+    "pathTemplate": "Buildings/{Color} Buildings/{type}.png",
+    "types": {
+      "archery": { "width": 192, "height": 256 },
+      "barracks": { "width": 192, "height": 256 },
+      "castle": { "width": 320, "height": 256 },
+      "house1": { "width": 128, "height": 192 },
+      "house2": { "width": 128, "height": 192 },
+      "house3": { "width": 128, "height": 192 },
+      "monastery": { "width": 192, "height": 320 },
+      "tower": { "width": 128, "height": 256 }
+    }
+  },
+  "units": {
+    "colorVariants": ["black", "blue", "purple", "red", "yellow"],
+    "pathTemplate": "Units/{Color} Units/{unit}/{file}.png",
+    "types": {
+      "archer": {
+        "frameSize": { "width": 192, "height": 192 },
+        "animations": {
+          "idle": { "file": "Archer_Idle", "frames": 6 },
+          "run": { "file": "Archer_Run", "frames": 4 },
+          "shoot": { "file": "Archer_Shoot", "frames": 8 }
+        },
+        "extras": {
+          "arrow": { "file": "Arrow", "width": 64, "height": 64 }
+        }
+      },
+      "warrior": {
+        "frameSize": { "width": 192, "height": 192 },
+        "animations": {
+          "idle": { "file": "Warrior_Idle", "frames": 8 },
+          "run": { "file": "Warrior_Run", "frames": 6 },
+          "attack1": { "file": "Warrior_Attack1", "frames": 4 },
+          "attack2": { "file": "Warrior_Attack2", "frames": 4 },
+          "guard": { "file": "Warrior_Guard", "frames": 6 }
+        }
+      },
+      "monk": {
+        "frameSize": { "width": 192, "height": 192 },
+        "animations": {
+          "idle": { "file": "Idle", "frames": 6 },
+          "run": { "file": "Run", "frames": 4 },
+          "heal": { "file": "Heal", "frames": 11 }
+        },
+        "extras": {
+          "healEffect": { "file": "Heal_Effect", "width": 2112, "height": 192, "frames": 11 }
+        }
+      },
+      "pawn": {
+        "frameSize": { "width": 192, "height": 192 },
+        "tools": ["", "axe", "gold", "hammer", "knife", "meat", "pickaxe", "wood"],
+        "animations": {
+          "idle": {
+            "base": { "file": "Pawn_Idle", "frames": 8 },
+            "axe": { "file": "Pawn_Idle Axe", "frames": 8 },
+            "gold": { "file": "Pawn_Idle Gold", "frames": 8 },
+            "hammer": { "file": "Pawn_Idle Hammer", "frames": 8 },
+            "knife": { "file": "Pawn_Idle Knife", "frames": 8 },
+            "meat": { "file": "Pawn_Idle Meat", "frames": 8 },
+            "pickaxe": { "file": "Pawn_Idle Pickaxe", "frames": 8 },
+            "wood": { "file": "Pawn_Idle Wood", "frames": 8 }
+          },
+          "run": {
+            "base": { "file": "Pawn_Run", "frames": 6 },
+            "axe": { "file": "Pawn_Run Axe", "frames": 6 },
+            "gold": { "file": "Pawn_Run Gold", "frames": 6 },
+            "hammer": { "file": "Pawn_Run Hammer", "frames": 6 },
+            "knife": { "file": "Pawn_Run Knife", "frames": 6 },
+            "meat": { "file": "Pawn_Run Meat", "frames": 6 },
+            "pickaxe": { "file": "Pawn_Run Pickaxe", "frames": 6 },
+            "wood": { "file": "Pawn_Run Wood", "frames": 6 }
+          },
+          "interact": {
+            "axe": { "file": "Pawn_Interact Axe", "frames": 6 },
+            "hammer": { "file": "Pawn_Interact Hammer", "frames": 3 },
+            "knife": { "file": "Pawn_Interact Knife", "frames": 4 },
+            "pickaxe": { "file": "Pawn_Interact Pickaxe", "frames": 6 }
+          }
+        }
+      },
+      "lancer": {
+        "frameSize": { "width": 320, "height": 320 },
+        "animations": {
+          "idle": { "file": "Lancer_Idle", "frames": 12 },
+          "run": { "file": "Lancer_Run", "frames": 6 },
+          "attack": {
+            "up": { "file": "Lancer_Up_Attack", "frames": 3 },
+            "down": { "file": "Lancer_Down_Attack", "frames": 3 },
+            "right": { "file": "Lancer_Right_Attack", "frames": 3 },
+            "upRight": { "file": "Lancer_UpRight_Attack", "frames": 3 },
+            "downRight": { "file": "Lancer_DownRight_Attack", "frames": 3 }
+          },
+          "defence": {
+            "up": { "file": "Lancer_Up_Defence", "frames": 6 },
+            "down": { "file": "Lancer_Down_Defence", "frames": 6 },
+            "right": { "file": "Lancer_Right_Defence", "frames": 6 },
+            "upRight": { "file": "Lancer_UpRight_Defence", "frames": 6 },
+            "downRight": { "file": "Lancer_DownRight_Defence", "frames": 6 }
+          }
+        }
+      }
+    }
+  },
+  "terrain": {
+    "tileset": {
+      "path": "Terrain/Tileset",
+      "tileSize": 64,
+      "tilemaps": {
+        "color1": { "file": "Tilemap_color1.png", "width": 576, "height": 384, "columns": 9, "rows": 6 },
+        "color2": { "file": "Tilemap_color2.png", "width": 576, "height": 384, "columns": 9, "rows": 6 },
+        "color3": { "file": "Tilemap_color3.png", "width": 576, "height": 384, "columns": 9, "rows": 6 },
+        "color4": { "file": "Tilemap_color4.png", "width": 576, "height": 384, "columns": 9, "rows": 6 },
+        "color5": { "file": "Tilemap_color5.png", "width": 576, "height": 384, "columns": 9, "rows": 6 }
+      },
+      "water": {
+        "background": { "file": "Water Background color.png", "width": 64, "height": 64 },
+        "foam": { "file": "Water Foam.png", "width": 3072, "height": 192, "frameWidth": 192, "frames": 16 }
+      },
+      "shadow": { "file": "Shadow.png", "width": 192, "height": 192 }
+    },
+    "decorations": {
+      "path": "Terrain/Decorations",
+      "bushes": {
+        "path": "Bushes",
+        "frameSize": { "width": 128, "height": 128 },
+        "items": [
+          { "file": "Bushe1.png", "frames": 8 },
+          { "file": "Bushe2.png", "frames": 8 },
+          { "file": "Bushe3.png", "frames": 8 },
+          { "file": "Bushe4.png", "frames": 8 }
+        ]
+      },
+      "clouds": {
+        "path": "Clouds",
+        "items": [
+          { "file": "Clouds_01.png", "width": 576, "height": 256 },
+          { "file": "Clouds_02.png", "width": 576, "height": 256 },
+          { "file": "Clouds_03.png", "width": 576, "height": 256 },
+          { "file": "Clouds_04.png", "width": 576, "height": 256 },
+          { "file": "Clouds_05.png", "width": 576, "height": 256 },
+          { "file": "Clouds_06.png", "width": 576, "height": 256 },
+          { "file": "Clouds_07.png", "width": 576, "height": 256 },
+          { "file": "Clouds_08.png", "width": 576, "height": 256 }
+        ]
+      },
+      "rocks": {
+        "path": "Rocks",
+        "size": { "width": 64, "height": 64 },
+        "items": ["Rock1.png", "Rock2.png", "Rock3.png", "Rock4.png"]
+      },
+      "waterRocks": {
+        "path": "Rocks in the Water",
+        "frameSize": { "width": 64, "height": 64 },
+        "items": [
+          { "file": "Water Rocks_01.png", "frames": 16 },
+          { "file": "Water Rocks_02.png", "frames": 16 },
+          { "file": "Water Rocks_03.png", "frames": 16 },
+          { "file": "Water Rocks_04.png", "frames": 16 }
+        ]
+      },
+      "rubberDuck": {
+        "path": "Rubber Duck",
+        "file": "Rubber duck.png",
+        "width": 96,
+        "height": 32,
+        "frameWidth": 32,
+        "frames": 3
+      }
+    },
+    "resources": {
+      "path": "Terrain/Resources",
+      "gold": {
+        "path": "Gold",
+        "resource": {
+          "path": "Gold Resource",
+          "normal": { "file": "Gold_Resource.png", "width": 128, "height": 128 },
+          "highlight": { "file": "Gold_Resource_Highlight.png", "width": 768, "height": 128, "frameWidth": 128, "frames": 6 }
+        },
+        "stones": {
+          "path": "Gold Stones",
+          "size": { "width": 128, "height": 128 },
+          "highlightFrames": 6,
+          "items": [
+            { "normal": "Gold Stone 1.png", "highlight": "Gold Stone 1_Highlight.png" },
+            { "normal": "Gold Stone 2.png", "highlight": "Gold Stone 2_Highlight.png" },
+            { "normal": "Gold Stone 3.png", "highlight": "Gold Stone 3_Highlight.png" },
+            { "normal": "Gold Stone 4.png", "highlight": "Gold Stone 4_Highlight.png" },
+            { "normal": "Gold Stone 5.png", "highlight": "Gold Stone 5_Highlight.png" },
+            { "normal": "Gold Stone 6.png", "highlight": "Gold Stone 6_Highlight.png" }
+          ]
+        }
+      },
+      "wood": {
+        "path": "Wood",
+        "trees": {
+          "path": "Trees",
+          "frameWidth": 192,
+          "items": [
+            { "tree": "Tree1.png", "stump": "Stump 1.png", "width": 1536, "height": 256, "frames": 8 },
+            { "tree": "Tree2.png", "stump": "Stump 2.png", "width": 1536, "height": 256, "frames": 8 },
+            { "tree": "Tree3.png", "stump": "Stump 3.png", "width": 1536, "height": 192, "frames": 8 },
+            { "tree": "Tree4.png", "stump": "Stump 4.png", "width": 1536, "height": 192, "frames": 8 }
+          ],
+          "stumpSize": { "width": 192, "height": 256 }
+        },
+        "resource": {
+          "path": "Wood Resource",
+          "file": "Wood Resource.png",
+          "width": 64,
+          "height": 64
+        }
+      },
+      "meat": {
+        "path": "Meat",
+        "resource": {
+          "path": "Meat Resource",
+          "file": "Meat Resource.png",
+          "width": 64,
+          "height": 64
+        },
+        "sheep": {
+          "path": "Sheep",
+          "frameSize": { "width": 128, "height": 128 },
+          "animations": {
+            "idle": { "file": "Sheep_Idle.png", "frames": 6 },
+            "move": { "file": "Sheep_Move.png", "frames": 4 },
+            "grass": { "file": "Sheep_Grass.png", "frames": 12 }
+          }
+        }
+      },
+      "tools": {
+        "path": "Tools",
+        "size": { "width": 64, "height": 64 },
+        "items": ["Tool_01.png", "Tool_02.png", "Tool_03.png", "Tool_04.png"]
+      }
+    }
+  },
+  "particles": {
+    "path": "Particle FX",
+    "effects": {
+      "dust": [
+        { "file": "Dust_01.png", "width": 512, "height": 64, "frameWidth": 64, "frames": 8 },
+        { "file": "Dust_02.png", "width": 640, "height": 64, "frameWidth": 64, "frames": 10 }
+      ],
+      "fire": [
+        { "file": "Fire_01.png", "width": 512, "height": 64, "frameWidth": 64, "frames": 8 },
+        { "file": "Fire_02.png", "width": 640, "height": 64, "frameWidth": 64, "frames": 10 },
+        { "file": "Fire_03.png", "width": 768, "height": 64, "frameWidth": 64, "frames": 12 }
+      ],
+      "explosion": [
+        { "file": "Explosion_01.png", "width": 1536, "height": 192, "frameWidth": 192, "frames": 8 },
+        { "file": "Explosion_02.png", "width": 1920, "height": 192, "frameWidth": 192, "frames": 10 }
+      ],
+      "waterSplash": { "file": "Water Splash.png", "width": 1728, "height": 192, "frameWidth": 192, "frames": 9 }
+    }
+  },
+  "ui": {
+    "path": "UI Elements/UI Elements",
+    "buttons": {
+      "path": "Buttons",
+      "big": {
+        "size": { "width": 320, "height": 320 },
+        "blue": { "regular": "BigBlueButton_Regular.png", "pressed": "BigBlueButton_Pressed.png" },
+        "red": { "regular": "BigRedButton_Regular.png", "pressed": "BigRedButton_Pressed.png" }
+      },
+      "smallRound": {
+        "size": { "width": 128, "height": 128 },
+        "blue": { "regular": "SmallBlueRoundButton_Regular.png", "pressed": "SmallBlueRoundButton_Pressed.png" },
+        "red": { "regular": "SmallRedRoundButton_Regular.png", "pressed": "SmallRedRoundButton_Pressed.png" }
+      },
+      "smallSquare": {
+        "size": { "width": 128, "height": 128 },
+        "blue": { "regular": "SmallBlueSquareButton_Regular.png", "pressed": "SmallBlueSquareButton_Pressed.png" },
+        "red": { "regular": "SmallRedSquareButton_Regular.png", "pressed": "SmallRedSquareButton_Pressed.png" }
+      },
+      "tinyRound": {
+        "size": { "width": 64, "height": 64 },
+        "blue": "TinyRoundBlueButton.png",
+        "red": "TinyRoundRedButton.png"
+      },
+      "tinySquare": {
+        "size": { "width": 64, "height": 64 },
+        "blue": "TinySquareBlueButton.png",
+        "red": "TinySquareRedButton.png"
+      }
+    },
+    "bars": {
+      "path": "Bars",
+      "big": {
+        "base": { "file": "BigBar_Base.png", "width": 320, "height": 64 },
+        "fill": { "file": "BigBar_Fill.png", "width": 64, "height": 64 }
+      },
+      "small": {
+        "base": { "file": "SmallBar_Base.png", "width": 320, "height": 64 },
+        "fill": { "file": "SmallBar_Fill.png", "width": 64, "height": 64 }
+      }
+    },
+    "banners": {
+      "path": "Banners",
+      "banner": { "file": "Banner.png", "width": 448, "height": 448 },
+      "slots": { "file": "Banner_Slots.png", "width": 192, "height": 192 }
+    },
+    "cursors": {
+      "path": "Cursors",
+      "size": { "width": 64, "height": 64 },
+      "items": ["Cursor_01.png", "Cursor_02.png", "Cursor_03.png", "Cursor_04.png"]
+    },
+    "avatars": {
+      "path": "Human Avatars",
+      "size": { "width": 256, "height": 256 },
+      "count": 25,
+      "pattern": "Avatars_{num}.png"
+    },
+    "icons": {
+      "path": "Icons",
+      "size": { "width": 64, "height": 64 },
+      "count": 12,
+      "pattern": "Icon_{num}.png"
+    },
+    "papers": {
+      "path": "Papers",
+      "size": { "width": 320, "height": 320 },
+      "items": {
+        "regular": "RegularPaper.png",
+        "special": "SpecialPaper.png"
+      }
+    },
+    "ribbons": {
+      "path": "Ribbons",
+      "small": { "file": "SmallRibbons.png", "width": 320, "height": 640 },
+      "big": { "file": "BigRibbons.png", "width": 448, "height": 640 }
+    },
+    "swords": {
+      "path": "Swords",
+      "file": "Swords.png",
+      "width": 448,
+      "height": 640
+    },
+    "woodTable": {
+      "path": "Wood Table",
+      "table": { "file": "WoodTable.png", "width": 448, "height": 448 },
+      "slots": { "file": "WoodTable_Slots.png", "width": 192, "height": 192 }
+    }
+  },
+  "storeBanners": {
+    "path": "UI Elements/UI Banners from the store page",
+    "banner": {
+      "path": "Banner",
+      "main": { "file": "Banner.png" },
+      "slots": { "file": "Slots.png" }
+    },
+    "ribbons": {
+      "path": "Ribbons",
+      "colorVariants": ["black", "blue", "purple", "red", "yellow"],
+      "pattern": "Ribbon_{Color}.png"
+    }
+  }
+}

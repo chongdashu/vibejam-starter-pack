@@ -1,0 +1,116 @@
+{
+    "asset" : {
+        "generator" : "Khronos glTF Blender I/O v1.7.33",
+        "version" : "2.0"
+    },
+    "scene" : 0,
+    "scenes" : [
+        {
+            "name" : "Scene",
+            "nodes" : [
+                0
+            ]
+        }
+    ],
+    "nodes" : [
+        {
+            "mesh" : 0,
+            "name" : "Debris_Papers_2",
+            "rotation" : [
+                0,
+                0.1531962752342224,
+                0,
+                0.9881957769393921
+            ],
+            "scale" : [
+                0.11411241441965103,
+                0.11411242187023163,
+                0.11411241441965103
+            ]
+        }
+    ],
+    "materials" : [
+        {
+            "doubleSided" : true,
+            "name" : "White",
+            "pbrMetallicRoughness" : {
+                "baseColorFactor" : [
+                    0.6421434283256531,
+                    0.6738417744636536,
+                    0.5752183794975281,
+                    1
+                ],
+                "metallicFactor" : 0,
+                "roughnessFactor" : 0.5
+            }
+        }
+    ],
+    "meshes" : [
+        {
+            "name" : "Plane.001",
+            "primitives" : [
+                {
+                    "attributes" : {
+                        "POSITION" : 0,
+                        "NORMAL" : 1
+                    },
+                    "indices" : 2,
+                    "material" : 0
+                }
+            ]
+        }
+    ],
+    "accessors" : [
+        {
+            "bufferView" : 0,
+            "componentType" : 5126,
+            "count" : 32,
+            "max" : [
+                5.52194356918335,
+                0.0368330217897892,
+                3.125650405883789
+            ],
+            "min" : [
+                -3.75948166847229,
+                0.01187954843044281,
+                -3.55462908744812
+            ],
+            "type" : "VEC3"
+        },
+        {
+            "bufferView" : 1,
+            "componentType" : 5126,
+            "count" : 32,
+            "type" : "VEC3"
+        },
+        {
+            "bufferView" : 2,
+            "componentType" : 5123,
+            "count" : 48,
+            "type" : "SCALAR"
+        }
+    ],
+    "bufferViews" : [
+        {
+            "buffer" : 0,
+            "byteLength" : 384,
+            "byteOffset" : 0
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 384,
+            "byteOffset" : 384
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 96,
+            "byteOffset" : 768
+        }
+    ],
+    "buffers" : [
+        {
+            "byteLength" : 864,
+            "uri" : "data:application/octet-stream;base64,S6IswNT5ET1WfJA/Eg1Rv9T5ET3eteU+TR1OwNT5ET19uqK+jnyrv9T5ET38en+/aP7+PjneFj3Ru5g/XnIeQDneFj0S3L4/tL9LPzneFj2g0ki/foIxQDneFj0+JPm+WZtwwL8B1TzmiHk/7R8ewL8B1TzHQyBAQFIlwL8B1TzQYoe8qK2lv78B1TyQpcE/cW4owHCiQjzjqMy/XA8tv3CiQjyTF5e/yaUNwHCiQjwLf2PAeNmDvnCiQjxjtkjACm2BvwaM5jzs3fQ/tE0UPwaM5jyoCkhA2FJOPgaM5jwkKKU+Pl7lPwaM5jxsgcQ/vm5uv3CiQjxL7Cm//LFMP3CiQjzwHK0+JGCQPXCiQjxBQxnAX5bmP3CiQjwgSbK/eppAQNT5ET3CnWm/NjyPQNT5ET2E8+Q+ysSBQNT5ET0omgLAw7OwQNT5ET0WUS6/ZpxbQL8B1TzuTFa/zG4qQL8B1TyIM4E/zECbQL8B1Txw/nu+/6mCQL8B1Twy2sw/sGomsAAAgD8AAACAsGomsAAAgD8AAACAsGomsAAAgD8AAACAsGomsAAAgD8AAACAAAAAsAAAgD8AAACAAAAAsAAAgD8AAACAAAAAsAAAgD8AAACAAAAAsAAAgD8AAACAsWqmsAAAgD8AAACAsWqmsAAAgD8AAACAsWqmsAAAgD8AAACAsWqmsAAAgD8AAACAAAAAAAAAgD8AAACAAAAAAAAAgD8AAACAAAAAAAAAgD8AAACAAAAAAAAAgD8AAACA/v9/MAAAgD8AAACA/v9/MAAAgD8AAACA/v9/MAAAgD8AAACA/v9/MAAAgD8AAACA/v//LwAAgD8AAACA/v//LwAAgD8AAACA/v//LwAAgD8AAACA/v//LwAAgD8AAACArWqmsAAAgD8AAACArWqmsAAAgD8AAACArWqmsAAAgD8AAACArWqmsAAAgD8AAACAr2qmsAAAgD8AAACAr2qmsAAAgD8AAACAr2qmsAAAgD8AAACAr2qmsAAAgD8AAACAAAABAAMAAAADAAIABAAFAAcABAAHAAYACAAJAAsACAALAAoADAANAA8ADAAPAA4AEAARABMAEAATABIAFAAVABcAFAAXABYAGAAZABsAGAAbABoAHAAdAB8AHAAfAB4A"
+        }
+    ]
+}

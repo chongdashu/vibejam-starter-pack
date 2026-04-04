@@ -1,0 +1,41 @@
+{
+  "assets": {
+    "characters": {
+      "Male_1": "assets/Characters/glTF/Character_Male_1.gltf",
+      "Male_2": "assets/Characters/glTF/Character_Male_2.gltf",
+      "Female_1": "assets/Characters/glTF/Character_Female_1.gltf",
+      "Female_2": "assets/Characters/glTF/Character_Female_2.gltf"
+    },
+    "animals": {
+      "Chick": "assets/Animals/glTF/Chick.gltf",
+      "Chicken": "assets/Animals/glTF/Chicken.gltf",
+      "Pig": "assets/Animals/glTF/Pig.gltf",
+      "Sheep": "assets/Animals/glTF/Sheep.gltf"
+    },
+    "environment": {
+      "flora": {
+        "Tree_1": "assets/Environment/glTF/Tree_1.gltf",
+        "Tree_2": "assets/Environment/glTF/Tree_2.gltf",
+        "Tree_3": "assets/Environment/glTF/Tree_3.gltf",
+        "Bush": "assets/Environment/glTF/Bush.gltf",
+        "Mushroom": "assets/Environment/glTF/Mushroom.gltf",
+        "GrassBig": "assets/Environment/glTF/Grass_Big.gltf",
+        "GrassSmall": "assets/Environment/glTF/Grass_Small.gltf",
+        "Flowers_1": "assets/Environment/glTF/Flowers_1.gltf",
+        "Flowers_2": "assets/Environment/glTF/Flowers_2.gltf"
+      },
+      "resources": {
+        "Rock1": "assets/Environment/glTF/Rock1.gltf",
+        "Rock2": "assets/Environment/glTF/Rock2.gltf"
+      }
+    }
+  },
+  "summary": {
+    "total": 19,
+    "categories": {
+      "characters": 4,
+      "animals": 4,
+      "environment": 11
+    }
+  }
+}

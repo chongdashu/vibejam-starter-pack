@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Forest Census</title>
+  <meta name="description" content="A playful voxel diorama counting challenge built with modern Three.js." />
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: radial-gradient(circle at top, #0d1224, #04040b 65%);
+      --card: rgba(6, 13, 33, 0.72);
+      --accent: #8cff75;
+      --accent-2: #79d5ff;
+      --text: #f8fbff;
+      --muted: rgba(248, 251, 255, 0.72);
+      --border: rgba(255, 255, 255, 0.08);
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: clamp(20px, 4vw, 64px) clamp(20px, 6vw, 96px);
+      display: flex;
+      flex-direction: column;
+      gap: clamp(24px, 3vw, 42px);
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    header h1 {
+      font-size: clamp(28px, 4vw, 40px);
+      margin: 0;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    header span {
+      font-size: 14px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .social-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text);
+      text-decoration: underline;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .social-link svg {
+      width: 22px;
+      height: 22px;
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+    }
+    main {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: clamp(24px, 4vw, 48px);
+      align-items: center;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      padding: clamp(20px, 4vw, 36px);
+      box-shadow: 0 40px 80px rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(24px);
+    }
+    .eyebrow {
+      text-transform: uppercase;
+      letter-spacing: 0.28em;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    h2 {
+      font-size: clamp(30px, 4vw, 48px);
+      margin: 12px 0 16px;
+      line-height: 1.15;
+    }
+    p {
+      margin: 0 0 18px;
+      font-size: 16px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+    .cta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .cta a {
+      text-decoration: none;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 14px 22px;
+      border-radius: 999px;
+      color: #031101;
+      background: var(--accent);
+      box-shadow: 0 20px 45px rgba(140, 255, 117, 0.35);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .cta a.secondary {
+      background: transparent;
+      color: var(--accent-2);
+      border: 1px solid rgba(121, 213, 255, 0.5);
+      box-shadow: none;
+    }
+    .cta a:hover {
+      transform: translateY(-2px) scale(1.01);
+    }
+    figure {
+      margin: 0;
+      position: relative;
+    }
+    figure::after {
+      content: '';
+      position: absolute;
+      inset: 6%;
+      border-radius: 22px;
+      background: linear-gradient(135deg, rgba(140, 255, 117, 0.25), rgba(121, 213, 255, 0.25));
+      filter: blur(32px);
+      z-index: 0;
+    }
+    figure img {
+      position: relative;
+      width: 100%;
+      border-radius: 32px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 40px 90px rgba(7, 8, 17, 0.7);
+      display: block;
+    }
+    footer {
+      margin-top: auto;
+      border-top: 1px solid var(--border);
+      padding-top: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      color: var(--muted);
+    }
+    footer h3 {
+      margin: 0;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      font-size: 13px;
+      color: var(--text);
+    }
+    footer ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 14px;
+    }
+    footer a {
+      color: var(--accent-2);
+      text-decoration: underline;
+    }
+    @media (max-width: 720px) {
+      body {
+        padding: 16px;
+      }
+      header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .cta a {
+        flex: 1;
+        text-align: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Forest Census</h1>
+    <span>A ThreeJS Agent Skill Demo</span>
+    
+  </header>
+
+  <main>
+    <section class="card">
+      <p class="eyebrow">Playable Micro Experience</p>
+      <h2>Count the chicks in a lush voxel diorama.</h2>
+      <p>
+        Forest Census is a 20-second memory-and-perception challenge built with modern Three.js. Glide across
+        a handcrafted clearing, keep an eye on the wandering yellow chicks, and lock in your guess before time runs out.
+      </p>
+      <div class="cta">
+        <a href="/forest/">Play Forest Census</a>
+        <a class="secondary" href="#" target="_blank" rel="noreferrer">Source Code</a>
+      </div>
+    </section>
+
+    <figure>
+      <img src="/forest/design.png" alt="Forest Census concept art" loading="lazy" />
+    </figure>
+  </main>
+
+  <footer>
+    <div>
+      <h3>Other Useful Links</h3>
+      <ul>
+        <li><a href="https://tinyprd.app" target="_blank" rel="noreferrer">tinyprd.app</a> &mdash; game design planning</li>
+        <li><a href="https://onevibeamonth.com" target="_blank" rel="noreferrer">onevibeamonth.com</a> &mdash; vibe coding motivation</li>
+      </ul>
+    </div>
+    <span>© 2025 · Built by <a class="social-link" href="https://x.com/chongdashu" target="_blank" rel="noreferrer">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M3 3h5.3l4 5.5L16.9 3H21l-6.5 8.3L21 21h-5.3l-4.3-5.9L7 21H3l6.6-8.7z" />
+      </svg>
+      chongdashu
+    </a></span>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Claude Code exports
+
+# Environment
+.env
+.env.local
+
+# Third-party art assets (not redistributable)
+public/assets/oakwoods/**
+!public/assets/oakwoods/assets.json

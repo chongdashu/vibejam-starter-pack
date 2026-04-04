@@ -1,0 +1,7 @@
+Let's use the phaserjs skill to replicate the [Image #1].
+But do it slowly.
+Plan it out first - basically you want to add the three background layers first. 
+Then the tileset for just a flat ground. 
+Place the character and animate it with controls. 
+That's the baseline.
+Use @public/assets/oakwoods/assets.json for list of assets.

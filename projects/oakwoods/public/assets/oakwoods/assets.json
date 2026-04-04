@@ -1,0 +1,230 @@
+{
+  "meta": {
+    "name": "Oak Woods Asset Pack",
+    "author": "brullov",
+    "description": "2D pixel art forest environment with character, backgrounds, tileset, and decorations",
+    "basePath": "assets/oakwoods"
+  },
+  "images": {
+    "backgrounds": [
+      {
+        "key": "oakwoods-bg-layer1",
+        "path": "background/background_layer_1.png",
+        "width": 320,
+        "height": 180,
+        "description": "Sky/distant background layer (furthest)"
+      },
+      {
+        "key": "oakwoods-bg-layer2",
+        "path": "background/background_layer_2.png",
+        "width": 320,
+        "height": 180,
+        "description": "Mid-distance forest layer"
+      },
+      {
+        "key": "oakwoods-bg-layer3",
+        "path": "background/background_layer_3.png",
+        "width": 320,
+        "height": 180,
+        "description": "Near forest layer (closest)"
+      }
+    ],
+    "decorations": [
+      {
+        "key": "oakwoods-fence1",
+        "path": "decorations/fence_1.png",
+        "width": 73,
+        "height": 19
+      },
+      {
+        "key": "oakwoods-fence2",
+        "path": "decorations/fence_2.png",
+        "width": 72,
+        "height": 19
+      },
+      {
+        "key": "oakwoods-grass1",
+        "path": "decorations/grass_1.png",
+        "width": 8,
+        "height": 3
+      },
+      {
+        "key": "oakwoods-grass2",
+        "path": "decorations/grass_2.png",
+        "width": 10,
+        "height": 5
+      },
+      {
+        "key": "oakwoods-grass3",
+        "path": "decorations/grass_3.png",
+        "width": 9,
+        "height": 4
+      },
+      {
+        "key": "oakwoods-lamp",
+        "path": "decorations/lamp.png",
+        "width": 23,
+        "height": 57
+      },
+      {
+        "key": "oakwoods-rock1",
+        "path": "decorations/rock_1.png",
+        "width": 20,
+        "height": 11
+      },
+      {
+        "key": "oakwoods-rock2",
+        "path": "decorations/rock_2.png",
+        "width": 27,
+        "height": 12
+      },
+      {
+        "key": "oakwoods-rock3",
+        "path": "decorations/rock_3.png",
+        "width": 45,
+        "height": 18
+      },
+      {
+        "key": "oakwoods-shop",
+        "path": "decorations/shop.png",
+        "width": 118,
+        "height": 98,
+        "description": "Static shop building"
+      },
+      {
+        "key": "oakwoods-sign",
+        "path": "decorations/sign.png",
+        "width": 22,
+        "height": 31
+      }
+    ]
+  },
+  "spritesheets": {
+    "character": {
+      "key": "oakwoods-char-blue",
+      "path": "character/char_blue.png",
+      "frameWidth": 56,
+      "frameHeight": 56,
+      "totalWidth": 448,
+      "totalHeight": 392,
+      "columns": 8,
+      "rows": 7,
+      "totalFrames": 56,
+      "animations": [
+        {
+          "key": "char-blue-idle",
+          "description": "Idle stance",
+          "startFrame": 0,
+          "endFrame": 5,
+          "frameRate": 8,
+          "repeat": -1,
+          "notes": "Frames 6-7 are empty"
+        },
+        {
+          "key": "char-blue-attack",
+          "description": "Sword attack",
+          "startFrame": 8,
+          "endFrame": 13,
+          "frameRate": 12,
+          "repeat": 0,
+          "notes": "Frames 14-15 are empty"
+        },
+        {
+          "key": "char-blue-run",
+          "description": "Running animation",
+          "startFrame": 16,
+          "endFrame": 21,
+          "frameRate": 10,
+          "repeat": -1,
+          "notes": "Frames 22-23 are empty"
+        },
+        {
+          "key": "char-blue-jump",
+          "description": "Jump animation",
+          "startFrame": 28,
+          "endFrame": 31,
+          "frameRate": 10,
+          "repeat": 0
+        },
+        {
+          "key": "char-blue-fall",
+          "description": "Falling animation",
+          "startFrame": 35,
+          "endFrame": 37,
+          "frameRate": 10,
+          "repeat": 0
+        },
+        {
+          "key": "char-blue-roll",
+          "description": "Roll/dodge animation",
+          "startFrame": 42,
+          "endFrame": 48,
+          "frameRate": 12,
+          "repeat": 0
+        },
+        {
+          "key": "char-blue-death",
+          "description": "Death animation",
+          "startFrame": 49,
+          "endFrame": 55,
+          "frameRate": 8,
+          "repeat": 0
+        }
+      ]
+    },
+    "decorations": {
+      "shop": {
+        "key": "oakwoods-shop-anim",
+        "path": "decorations/shop_anim.png",
+        "frameWidth": 118,
+        "frameHeight": 128,
+        "totalWidth": 708,
+        "totalHeight": 128,
+        "columns": 6,
+        "rows": 1,
+        "totalFrames": 6,
+        "animations": [
+          {
+            "key": "shop-idle",
+            "description": "Shop ambient animation (smoke, lantern flicker)",
+            "startFrame": 0,
+            "endFrame": 5,
+            "frameRate": 8,
+            "repeat": -1
+          }
+        ]
+      }
+    }
+  },
+  "tilesets": {
+    "main": {
+      "key": "oakwoods-tileset",
+      "path": "oak_woods_tileset.png",
+      "tileWidth": 24,
+      "tileHeight": 24,
+      "totalWidth": 504,
+      "totalHeight": 360,
+      "columns": 21,
+      "rows": 15,
+      "totalTiles": 315,
+      "description": "Main tileset containing platforms, terrain, and structural elements"
+    }
+  },
+  "phaserLoader": {
+    "description": "Example Phaser 3 preload code for these assets",
+    "example": {
+      "images": [
+        "this.load.image('oakwoods-bg-layer1', 'assets/oakwoods/background/background_layer_1.png');",
+        "this.load.image('oakwoods-bg-layer2', 'assets/oakwoods/background/background_layer_2.png');",
+        "this.load.image('oakwoods-bg-layer3', 'assets/oakwoods/background/background_layer_3.png');"
+      ],
+      "spritesheets": [
+        "this.load.spritesheet('oakwoods-char-blue', 'assets/oakwoods/character/char_blue.png', { frameWidth: 56, frameHeight: 56 });",
+        "this.load.spritesheet('oakwoods-shop-anim', 'assets/oakwoods/decorations/shop_anim.png', { frameWidth: 118, frameHeight: 128 });"
+      ],
+      "tileset": [
+        "this.load.image('oakwoods-tileset', 'assets/oakwoods/oak_woods_tileset.png');"
+      ]
+    }
+  }
+}

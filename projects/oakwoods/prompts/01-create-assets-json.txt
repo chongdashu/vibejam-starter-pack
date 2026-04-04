@@ -1,0 +1,4 @@
+Study the assets in @public/assets/oakwoods/ , create an assets.json thatis an index to the assets. 
+Account for spritesheet animations @public/assets/oakwoods/character/char_blue.png  
+Account also for tilesets @public/assets/oakwoods/oak_woods_tileset.png
+So that we can easily reference this assets.json for phaser 
