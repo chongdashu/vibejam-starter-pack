@@ -6,7 +6,7 @@ What’s kept in this starter pack:
 - the prompt history in `prompts/`
 - the reusable `fal-ai-image` skill at the repo root:
   - `.claude/skills/fal-ai-image/`
-  - `.codex/skills/fal-ai-image/`
+  - `.agents/skills/fal-ai-image/`
 
 What was removed from this pack version:
 - large generated assets

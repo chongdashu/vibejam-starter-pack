@@ -64,7 +64,7 @@ Don’t “eyeball rotate until it looks right” and don’t assume “GLTF fac
 In the calibration scene, **prove** each imported model’s forward direction and lock it as a constant (global `MODEL_YAW_OFFSET` or per-asset `yawOffset`).
 
 If you want a reusable helper module instead of hand-rolling arrows/box helpers each time:
-- Install (repo-scoped): run `python3 .codex/skills/threejs-builder/scripts/install-gltf-calibration-helpers.py --out ./gltf-calibration-helpers.mjs`
+- Install (repo-scoped): run `python3 .agents/skills/threejs-builder/scripts/install-gltf-calibration-helpers.py --out ./gltf-calibration-helpers.mjs`
 - Install (from within the skill folder): run `python3 scripts/install-gltf-calibration-helpers.py --out ./gltf-calibration-helpers.mjs`
 - Use: import and call `attachGltfCalibrationHelpers(...)` (see `scripts/README.md`)
 

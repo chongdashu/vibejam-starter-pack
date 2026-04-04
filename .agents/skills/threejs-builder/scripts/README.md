@@ -7,7 +7,7 @@ This skill includes a small ES-module you can copy into your project to make the
 Install into your project:
 
 ```bash
-python3 .codex/skills/threejs-builder/scripts/install-gltf-calibration-helpers.py \
+python3 .agents/skills/threejs-builder/scripts/install-gltf-calibration-helpers.py \
   --out ./gltf-calibration-helpers.mjs
 ```
 

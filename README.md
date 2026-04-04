@@ -1,6 +1,6 @@
 # Vibe Jam Starter Pack
 
-> A curated bundle of real AI-assisted game starter repos + unified Claude Code / Codex CLI skills to help you ship something playable fast.
+> A curated bundle of real AI-assisted game starter repos + unified Claude Code / agent skills to help you ship something playable fast.
 
 <a href="https://vibegamedev.com?utm_source=github&utm_medium=readme&utm_campaign=vibejam-starter-pack">
   <img src="assets/vgd.png" width="720" alt="VibeGameDev.com — AI game dev resources" />
@@ -14,7 +14,7 @@
 
 - 4 standalone game starter projects
 - 1 bonus isometric sprite workflow repo
-- 6 unified skills mirrored across both `.claude/skills/` and `.codex/skills/`
+- 6 unified skills mirrored across both `.claude/skills/` and `.agents/skills/`
 - preserved per-project folder structures so each starter still works the way it was built
 - one clean root repo for exploring 2D, 3D, testing, tilemaps, and iOS-export workflows
 
@@ -27,7 +27,7 @@ If you want the broader ecosystem of projects, writeups, workflows, and whatever
 ## Start here
 
 1. Download this repo or ZIP it.
-2. Open the repo root in Claude Code or Codex CLI.
+2. Open the repo root in Claude Code or your agent tool of choice.
 3. Read [START-HERE.md](START-HERE.md).
 4. Pick one lane:
    - 2D Phaser
@@ -99,13 +99,13 @@ This pack dedupes the most reusable skills into one shared root.
 - `.claude/skills/threejs-capacitor-ios/`
 - `.claude/skills/fal-ai-image/`
 
-### Codex CLI
-- `.codex/skills/phaser-gamedev/`
-- `.codex/skills/playwright-testing/`
-- `.codex/skills/threejs-builder/`
-- `.codex/skills/tinyswords-tilemap/`
-- `.codex/skills/threejs-capacitor-ios/`
-- `.codex/skills/fal-ai-image/`
+### Agent-compatible
+- `.agents/skills/phaser-gamedev/`
+- `.agents/skills/playwright-testing/`
+- `.agents/skills/threejs-builder/`
+- `.agents/skills/tinyswords-tilemap/`
+- `.agents/skills/threejs-capacitor-ios/`
+- `.agents/skills/fal-ai-image/`
 
 Why this matters:
 - no duplicated skill folders hidden inside every project
@@ -125,7 +125,7 @@ vibejam-starter-pack/
 │  └─ vgd.png
 ├─ .claude/
 │  └─ skills/
-├─ .codex/
+├─ .agents/
 │  └─ skills/
 ├─ projects/
 │  ├─ oakwoods/
@@ -170,7 +170,7 @@ You get examples for:
 | | This starter pack | [VibeGameDev.com](https://vibegamedev.com?utm_source=github&utm_medium=readme&utm_campaign=vibejam-starter-pack-comparison) |
 |---|---|---|
 | Curated jam-ready starter repos | ✅ | ✅ |
-| Unified Claude/Codex skills | ✅ | ✅ |
+| Unified Claude/agent skills | ✅ | ✅ |
 | Bonus sprite workflow repo | ✅ | ✅ |
 | One downloadable repo/zip | ✅ | ✅ |
 | Broader library of AI gamedev resources | — | ✅ |

@@ -3,7 +3,7 @@ _Last updated: 2025-12-30_
 
 ## 1. Intent & References
 - **Goal:** Ship the Forest counting minigame described in `forest/PRD.md` and illustrated by `forest/design.png`: a 960×540 fixed-aspect Three.js diorama where the player counts only Yellow Chicks within 20 seconds and submits a guess.
-- **Sources consulted:** `forest/PRD.md`, `forest/design.png`, `assets.json`, `ASSET_INDEX.md`, and Three.js execution guidance from `.codex/skills/threejs-builder/SKILL.md`.
+- **Sources consulted:** `forest/PRD.md`, `forest/design.png`, `assets.json`, `ASSET_INDEX.md`, and Three.js execution guidance from `.agents/skills/threejs-builder/SKILL.md`.
 - **Clarified decisions (per user):**
   1. Counter UI renders as a DOM overlay anchored to the screen center (not attached to the player mesh).
   2. Use the provided GLTF models “as is” for player, chicks, chickens, pigs, sheep, and foliage (no voxel primitives unless a loader failure occurs).

@@ -57,7 +57,7 @@ If you reuse or redistribute the assets outside this starter pack, check the ori
 
 ## Skills & References
 
-The build leans on the local `threejs-builder` skill for reference-frame contracts, animation handling, and ES-module patterns. See `.codex/skills/threejs-builder/SKILL.md` if you need to extend the scene.
+The build leans on the local `threejs-builder` skill for reference-frame contracts, animation handling, and ES-module patterns. See `.agents/skills/threejs-builder/SKILL.md` if you need to extend the scene.
 
 ## Resources
 

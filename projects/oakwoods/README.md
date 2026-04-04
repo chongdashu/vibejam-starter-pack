@@ -9,11 +9,11 @@ This repo is the companion project for the YouTube build:
 
 It includes:
 - A small Phaser 3 + TypeScript + Vite platformer scene (parallax background, infinite ground, movement/jump/attack).
-- The **Agent Skills** used in the video (Claude Code + Codex CLI).
+- The **Agent Skills** used in the video.
 
 ## Want more?
 
-If you want the all-in-one workflow kit I use across **Claude Code, Codex CLI, and Cursor**—including ready-to-run agents/skills/rules and full source from my YouTube builds—check out [BuilderPack.ai](https://www.builderpack.ai/?utm_campaign=claude_19&utm_source=github&utm_medium=readme).
+If you want the all-in-one workflow kit I use across **Claude Code, agent tools, and Cursor**—including ready-to-run agents/skills/rules and full source from my YouTube builds—check out [BuilderPack.ai](https://www.builderpack.ai/?utm_campaign=claude_19&utm_source=github&utm_medium=readme).
 
 
 
@@ -41,10 +41,10 @@ This repo ships **two skills**, each packaged for both tools (so 4 copies total)
 
 - **Phaser game dev**
   - Claude Code: `.claude/skills/phaser-gamedev/SKILL.md`
-  - Codex CLI: `.codex/skills/phaser-gamedev/SKILL.md`
+  - Agent-compatible: `.agents/skills/phaser-gamedev/SKILL.md`
 - **Playwright testing (including canvas/Phaser testing patterns)**
   - Claude Code: `.claude/skills/playwright-testing/SKILL.md`
-  - Codex CLI: `.codex/skills/playwright-testing/SKILL.md`
+  - Agent-compatible: `.agents/skills/playwright-testing/SKILL.md`
 
 Each `SKILL.md` contains its triggers, workflow, and reference docs.
 

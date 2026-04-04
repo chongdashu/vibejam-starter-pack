@@ -85,7 +85,7 @@ Lock the result as a constant:
 - Keep this separate from gameplay heading (don’t “fix” movement vectors to compensate for wrong mesh forward).
 
 Optional helper module (bundled with this skill):
-- Install into your project with: `python3 .codex/skills/threejs-builder/scripts/install-gltf-calibration-helpers.py --out ./gltf-calibration-helpers.mjs`
+- Install into your project with: `python3 .agents/skills/threejs-builder/scripts/install-gltf-calibration-helpers.py --out ./gltf-calibration-helpers.mjs`
 - Then call: `attachGltfCalibrationHelpers({ scene, root, label, showGrid: true })`
 
 ## 3) Anchoring Pattern (stop “offset roulette”)

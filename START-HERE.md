@@ -4,7 +4,7 @@ If you only read one file before building, read this one.
 
 This repo is a curated Vibe Jam starter pack:
 - real starter projects
-- shared Claude Code / Codex skills at the repo root
+- shared Claude Code / agent skills at the repo root
 - a bonus sprite workflow repo for visual pipeline ideas
 
 If you want the full ecosystem beyond this pack, go to [vibegamedev.com](https://vibegamedev.com?utm_source=github&utm_medium=start-here&utm_campaign=vibejam-starter-pack).
@@ -13,10 +13,10 @@ If you want the full ecosystem beyond this pack, go to [vibegamedev.com](https:/
 
 ## The important rule
 
-Open the repo root in Claude Code or Codex CLI.
+Open the repo root in Claude Code or your agent tool of choice.
 
 Why:
-- the shared skills live in `.claude/skills/` and `.codex/skills/`
+- the shared skills live in `.claude/skills/` and `.agents/skills/`
 - if you only open a single subfolder, your agent may miss the unified skill set
 
 ---
@@ -112,7 +112,7 @@ This one is best treated as a reference folder, not your main gameplay starter.
 
 ## Shared skills in this pack
 
-Both Claude and Codex get:
+Both Claude and agent-compatible workflows get:
 - `phaser-gamedev`
 - `playwright-testing`
 - `threejs-builder`
