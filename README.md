@@ -14,10 +14,8 @@
 
 - 4 standalone game starter projects
 - 1 bonus isometric sprite workflow repo
-- 6 unified skills mirrored across both `.claude/skills/` and `.agents/skills/`
+- 6 battle-tested agent skills for game development — works with Codex, Claude Code, and Cursor
 - beginner-friendly full tutorial videos for both 2D and 3D workflows
-- preserved per-project folder structures so each starter still works the way it was built
-- one clean root repo for exploring 2D, 3D, testing, tilemaps, and iOS-export workflows
 
 This pack is designed for builders who want to move quickly during a jam without starting from a blank folder.
 
